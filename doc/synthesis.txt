@@ -1,0 +1,9 @@
+.. Emacs, this is -*-rst-*-
+
+Planner Synthesis
+=================
+.. automodule:: jtlvint
+   :members:
+
+.. automodule:: automaton
+   :members:
