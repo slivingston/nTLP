@@ -23,6 +23,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tulip.gridworld as gw
 
+import tulip
+#tulip.log_setlevel("DEBUG")
+tulip.log_echotofile()
+
 
 TROLL_RADIUS=1
 
