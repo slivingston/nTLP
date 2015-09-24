@@ -95,10 +95,10 @@ if not load_from_XML:
     spec.importDiscDynamics(disc_dynamics)
 
     # Check realizability
-    realizability = gr1cint.check_realizable(spec, verbose=1)
+    realizability = gr1cint.check_realizable(spec)
 
     # Compute an automaton
-    aut = gr1cint.synthesize(spec, verbose=1)
+    aut = gr1cint.synthesize(spec)
     aut.writeDotFile("rdsimple_gr1c_example.dot", hideZeros=True)
 
     # Remove dead-end states from automaton

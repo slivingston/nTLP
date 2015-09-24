@@ -101,7 +101,7 @@ spec = GRSpec(env_vars=env_vars.keys(),
 spec.importDiscDynamics(disc_dynamics)
 
 # Check realizability
-realizable = gr1cint.check_realizable(spec, verbose=1)
+realizable = gr1cint.check_realizable(spec)
 if not realizable:
     print "Problem specification cannot be realized."
     exit(-1)
