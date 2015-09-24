@@ -36,7 +36,6 @@
 
 from tulip import rhtlp, ltl_parse, nusmvint, spinint, automaton
 from tulip.prop2part import PropPreservingPartition
-from tulip.errorprint import printWarning, printError
 import copy, re, resource, time, threading, os
 from solver_common import SolverException
 

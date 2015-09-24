@@ -36,9 +36,11 @@
 import os, copy, re
 from subprocess import Popen, PIPE, call
 from contextlib import contextmanager
-from errorprint import printWarning, printError
 from solver_common import SolverException, memoryMonitor
 import ltl_parse
+
+import logging
+logger = logging.getLogger(__name__)
 
 class SPINError(SolverException):
     pass
@@ -58,8 +60,8 @@ def cd(path):
 
 prv = lambda x: os.path.join("..", x)
 class SPINInstance:
-    SPIN_PATH = os.path.join(os.path.dirname(__file__), "solvers/spin")
-    def __init__(self, model="tmp.pml", out="tmp.aut", path=SPIN_PATH,
+    SPIN_BIN_PREFIX = ""
+    def __init__(self, model="tmp.pml", out="tmp.aut", path=SPIN_BIN_PREFIX+"spin",
              preduce=True, verbose=0, safety=False, pandir="pan"):
         """Create new SPIN instance, generate pan verifier.
         
@@ -211,8 +213,8 @@ def writePromela(slvi, turns=False):
     (pml_file, spec, modules, globalv) = (slvi.out_file, slvi.spec, slvi.modules, slvi.globals)
     if (not os.path.exists(os.path.abspath(os.path.dirname(pml_file)))):
         if (verbose > 0):
-            printWarning('Folder for pml_file ' + pml_file + \
-                             ' does not exist. Creating...', obj=self)
+            logger.warn('Folder for pml_file ' + pml_file + \
+                        ' does not exist. Creating...')
         os.mkdir(os.path.abspath(os.path.dirname(pml_file)))
     
     f = open(pml_file, 'w')

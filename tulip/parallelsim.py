@@ -38,7 +38,9 @@ import time, random
 import threading
 
 from tulip import *
-from errorprint import printError
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class Strategy(threading.Thread):
@@ -101,7 +103,7 @@ class Strategy(threading.Thread):
 
         # check if initial conditions satisfy assumptions
         if (aut_node==-1):
-            printError(self.name + ": No transition found.", obj=self)
+            logger.error(self.name + ": No transition found.")
 
         # CONSECUTION
         start_time = time.time()
@@ -119,7 +121,7 @@ class Strategy(threading.Thread):
             # apply inputs
             aut_node = self.D.findNextAutState(current_aut_state=aut_node, env_state=inputs)
             if (aut_node==-1):
-                printError(self.name + ": No transition found.", obj=self)
+                logger.error(self.name + ": No transition found.")
 
             # write system variables
             map(lambda (k,v): self.V.update({k:v}), dict(filter(lambda (k,v): k in self.Y, self.D.node[aut_node]["state"].iteritems())).iteritems())

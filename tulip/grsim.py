@@ -41,9 +41,11 @@ from multiprocessing import Process
 from subprocess import call
 
 from automaton import Automaton
-from errorprint import printWarning, printError
 from congexf import dumpGexf, changeGexfAttvalue
 from gephistream import GephiStream
+
+import logging
+logger = logging.getLogger(__name__)
 
 activeID = 'is_active'
 
@@ -136,8 +138,8 @@ def grsim(aut_list, aut_trans_dict={}, env_states=[{}], num_it=20,
                                          env_state=env_state,
                                          deterministic_env=deterministic_env)
         if aut_state == -1:
-            printError('The specified sequence of environment states ' + \
-                       'does not satisfy the environment assumption.')
+            logger.error("The specified sequence of environment states " + \
+                         "does not satisfy the environment assumption.")
             return aut_states
         
         if graph_vis:

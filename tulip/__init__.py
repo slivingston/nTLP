@@ -37,9 +37,48 @@ TuLiP (http://tulip-control.sf.net) is the Temporal Logic Planning Toolbox
 that provides functions for verifying and constructing control protocols.
 """
 
+# Initialize logging facility
+import logging as _logging
+from time import gmtime as _gmtime
+logger = _logging.getLogger(__name__)
+logger.setLevel(_logging.DEBUG)
+_console_logh = _logging.StreamHandler()
+_console_logh.setLevel(_logging.WARNING)
+_base_log_format = "%(name)s:%(levelname)s: %(message)s"
+_formatterh = _logging.Formatter("%(asctime)s "+_base_log_format)
+_formatterh.converter = _gmtime
+_console_logh.setFormatter(_formatterh)
+logger.addHandler(_console_logh)
+
+def log_showtime(showtime=True):
+    if showtime:
+        _console_logh.setFormatter(_formatterh)  # Default format
+    else:
+        _console_logh.setFormatter(_logging.Formatter(_base_log_format))
+
+def log_setlevel(lvl="WARNING"):
+    _console_logh.setLevel(getattr(_logging, lvl))
+
+def log_echotofile(filename=None):
+    """
+
+    If no filename is given, then create one with name of the form
+    nTLP-YYYYMMDD.log
+    """
+    from time import strftime
+    if filename is None:
+        filename = "nTLP-"+strftime("%Y%m%d", _gmtime())+".log"
+    file_logh = _logging.FileHandler(filename)
+    file_logh.setLevel(_logging.DEBUG)
+    formatterh = _logging.Formatter("%(asctime)s "+_base_log_format)
+    formatterh.converter = _gmtime
+    file_logh.setFormatter(formatterh)
+    logger.addHandler(file_logh)
+
+
 __all__ = ["prop2part", "grsim", "jtlvint", "automaton", "rhtlp", "spec", 'discretize', 'polytope']
 
-__version__ = "0.7.9"
+__version__ = "0.8.0"
 
 import prop2part
 import grsim

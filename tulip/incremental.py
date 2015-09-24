@@ -99,7 +99,7 @@ def unreachable_cell_discrete(spec, aut, Y, blocked_cell, radius=1, nonmetric_N=
                     next_final_N[-1].update(indep_move)
             final_N = [d.copy() for d in next_final_N]
 
-    return patch_localfixpoint(spec, aut, final_N, [("blocksys", [Y.state(blocked_cell, nonbool=nonbool).copy()])], verbose=verbose)
+    return patch_localfixpoint(spec, aut, final_N, [("blocksys", [Y.state(blocked_cell, nonbool=nonbool).copy()])], toollog=verbose)
 
 
 def unreachable_cell(spec, aut, cells, blocked_cell_name, radius=1, abs_tol=1e-7, nonbool=False, verbose=0):
@@ -149,7 +149,7 @@ def unreachable_cell(spec, aut, cells, blocked_cell_name, radius=1, abs_tol=1e-7
 
     blocked_state = statebase.copy()
     blocked_state[blocked_cell_name] = 1
-    return patch_localfixpoint(spec, aut, N, [("blocksys", [blocked_state])], verbose=verbose)
+    return patch_localfixpoint(spec, aut, N, [("blocksys", [blocked_state])], toollog=verbose)
 
 
 def refine_cell(spec, aut, cells, refinements, radius=1, abs_tol=1e-7, nonbool=False, verbose=0):
@@ -210,7 +210,7 @@ def refine_cell(spec, aut, cells, refinements, radius=1, abs_tol=1e-7, nonbool=F
         blocked_states.append(statebase.copy())
         blocked_states[-1][k] = 1
     
-    aut_patched = patch_localfixpoint(spec, aut, N, [("blocksys", [bstate]) for bstate in blocked_states], verbose=verbose)
+    aut_patched = patch_localfixpoint(spec, aut, N, [("blocksys", [bstate]) for bstate in blocked_states], toollog=verbose)
     if aut_patched is None:
         return None
 

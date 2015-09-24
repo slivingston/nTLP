@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-SCL; 6 May 2013.
+Test tulip.gridworld
 """
 
 import numpy as np
@@ -103,7 +103,7 @@ class GridWorld_test:
         assert self.X == gw.GridWorld(self.X.dumps())
 
     def test_spec_realizable(self):
-        assert check_realizable(self.X.spec(nonbool=False), verbose=1)
+        assert check_realizable(self.X.spec(nonbool=False))
 
     def check_isEmpty(self, coord, expected):
         assert self.X.isEmpty(coord) == expected
@@ -227,7 +227,7 @@ class MGridWorld_test:
         assert self.X == gw.MGridWorld(self.X.dumps())
 
     def test_spec_realizable(self):
-        assert check_realizable(self.X.mspec(), verbose=1)
+        assert check_realizable(self.X.mspec())
 
 
 class CGridWorld_test:

@@ -38,8 +38,10 @@ doc-string goes here
 
 import re, copy
 from numpy import array
-from errorprint import printWarning, printError
 from polytope import Polytope
+
+import logging
+logger = logging.getLogger(__name__)
 
 ##############################################################
 def parseMatrix(matstr):
@@ -52,8 +54,8 @@ def parseMatrix(matstr):
         if (num_col < 0):
             num_col = len(row)
         elif(len(row) != num_col):
-            printError('ERROR: The number of columns in row ' + str(i+1) + \
-                           ' is not the same as the previous row')
+            logger.error('ERROR: The number of columns in row ' + str(i+1) + \
+                         ' is not the same as the previous row')
             exit(1)            
         mat.append(row)
     return array(mat)
@@ -109,7 +111,7 @@ def parseContRange(list):
     for i in range(0,len(list)):
         minmax = re.findall('([-+]?\d+)\s*,\s*([-+]?\d+)', list[i])
         if (len(minmax) != 1):
-            printError("ERROR: Unknown")
+            logger.error("ERROR: Unknown")
             exit(1)
         else:
             minmax = minmax[0]
@@ -199,7 +201,7 @@ def parseSpec(spec_file):
             nexttype = 6
             break
         elif (line.lstrip() != '#'):
-            printError("No variables match inputs needed")
+            logger.error("No variables match inputs needed")
         elif not line:
             print('End of File')
             break   

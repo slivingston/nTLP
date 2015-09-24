@@ -37,7 +37,6 @@ Receding horizon Temporal Logic Planning Module
 
 import sys, os, re, subprocess, copy
 
-from errorprint import printWarning, printError, printInfo
 from parsespec import parseSpec
 from polytope import Polytope, Region
 from discretize import CtsSysDyn, discretize
@@ -46,6 +45,9 @@ import automaton
 from spec import GRSpec
 import rhtlputil
 import jtlvint
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SynthesisProb:
@@ -157,10 +159,10 @@ class SynthesisProb:
             file = args['file']
             # Check that the input is valid
             if (not isinstance(file, str)):
-                printError("The input file is expected to be a string", obj=self)
+                logger.error("The input file is expected to be a string")
                 raise TypeError("Invalid file.")
             if (not os.path.isfile(file)):
-                printError("The rhtlp file " + file + " does not exist.", obj=self)
+                logger.error("The rhtlp file " + file + " does not exist.")
                 raise TypeError("Invalid file.")
 
             (env_vars, sys_disc_vars, disc_props, sys_cont_vars, cont_state_space, \
@@ -351,8 +353,7 @@ class SynthesisProb:
             self.__jtlvfile = jtlvfile
             self.__realizable = None
         else:
-            printError('The input jtlvfile must be a string indicating the name of the file.', \
-                           obj=self)
+            logger.error('The input jtlvfile must be a string indicating the name of the file.')
 
     ###################################################################
 
@@ -368,8 +369,7 @@ class SynthesisProb:
             self.__ysfile = ysfile
             self.__realizable = None
         else:
-            printError('The argument ysfile must be a string (name of the file).',
-                       obj=self)
+            logger.error('The argument ysfile must be a string (name of the file).')
 
     ###################################################################
 
@@ -413,15 +413,14 @@ class SynthesisProb:
 
         if (not isinstance(cont_state_space, Polytope) and \
                 cont_state_space is not None):
-            printError("The type of input cont_state_space is expected to be " + \
-                           "Polytope", obj=self)
+            logger.error("The type of input cont_state_space is expected to be Polytope")
             raise TypeError("Invalid cont_state_space.")
         if (not isinstance(cont_props, dict) and cont_props is not None):
-            printError("The input cont_props is expected to be a dictionary " + \
-                           "{str : Polytope}", obj=self)
+            logger.error("The input cont_props is expected to be a dictionary " + \
+                         "{str : Polytope}")
             raise TypeError("Invalid disc_props.")
         if (not isinstance(sys_dyn, CtsSysDyn) and sys_dyn is not None):
-            printError("The type of input sys_dyn is expected to be CtsSysDyn", obj=self)
+            logger.error("The type of input sys_dyn is expected to be CtsSysDyn")
             raise TypeError("Invalid sys_dyn.")
 
         # Process the continuous component
@@ -485,25 +484,25 @@ class SynthesisProb:
 
         # Check that the input is valid
         if (not isinstance(env_vars, dict) and env_vars is not None):
-            printError("The input env_vars is expected to be a dictionary " + \
-                           "{str : str} or {str : list}.", obj=self)
+            logger.error("The input env_vars is expected to be a dictionary " + \
+                           "{str : str} or {str : list}.")
             raise TypeError("Invalid env_vars.")
         if (not isinstance(sys_disc_vars, dict) and sys_disc_vars is not None):
-            printError("The input sys_disc_vars is expected to be a dictionary " + \
-                           "{str : str} or {str : list}", obj=self)
+            logger.error("The input sys_disc_vars is expected to be a dictionary " + \
+                           "{str : str} or {str : list}")
             raise TypeError("Invalid sys_disc_vars.")
         if (not isinstance(disc_props, dict) and disc_props is not None):
-            printError("The input disc_props is expected to be a dictionary " + \
-                           "{str : str}", obj=self)
+            logger.error("The input disc_props is expected to be a dictionary " + \
+                           "{str : str}")
             raise TypeError("Invalid disc_props.")
         if (not isinstance(disc_dynamics, PropPreservingPartition) and \
                 disc_dynamics is not None):
-            printError("The type of input disc_dynamics is expected to be " + \
-                           "PropPreservingPartition", obj=self)
+            logger.error("The type of input disc_dynamics is expected to be " + \
+                           "PropPreservingPartition")
             raise TypeError("Invalid disc_dynamics.")
         if (not isinstance(spec, GRSpec) and \
                 (not isinstance(spec, list) or len(spec) != 2)):
-            printError("The input spec is expected to be a GRSpec object", obj=self)
+            logger.error("The input spec is expected to be a GRSpec object")
             raise TypeError("Invalid spec.")            
 
         # Check that the number of regions in disc_dynamics is correct.
@@ -511,8 +510,8 @@ class SynthesisProb:
             if (disc_dynamics.list_region is None):
                 disc_dynamics.list_region = []
             if (disc_dynamics.num_regions != len(disc_dynamics.list_region)):
-                printWarning('disc_dynamics.num_regions != ' + \
-                                 'len(disc_dynamics.list_regions)', obj=self)
+                logger.warn('disc_dynamics.num_regions != ' + \
+                            'len(disc_dynamics.list_regions)')
                 disc_dynamics.num_regions = len(disc_dynamics.list_region)
 
         # Construct this object
@@ -546,8 +545,8 @@ class SynthesisProb:
                             reg += val
                         self.__env_vars[var] = '{' + reg + '}'
                     else:
-                        printWarning("Unknown possible values for environment " + \
-                                         "variable " + var, obj=self)
+                        logger.warn("Unknown possible values for environment " + \
+                                    "variable " + var)
                 elif (isinstance(reg, list)):
                     all_values = ''
                     for val in reg:
@@ -556,8 +555,8 @@ class SynthesisProb:
                         all_values += str(val)
                     self.__env_vars[var] = '{' + all_values + '}'
                 else:
-                    printWarning("Unknown possible values for environment " + \
-                                     "variable "+ var, obj=self)
+                    logger.warn("Unknown possible values for environment " + \
+                                "variable "+ var)
 
         # Replace '...' in the range of possible values of sys_disc_vars to the actual 
         # values and convert a list representation of the range of possible values to a 
@@ -578,14 +577,14 @@ class SynthesisProb:
                         reg = ', '.join(all_values)
                         self.__sys_vars[var] = '{' + reg + '}'
                     else:
-                        printWarning("Unknown possible values for discrete " + \
-                                         "system variable " + var, obj=self)
+                        logger.warn("Unknown possible values for discrete " + \
+                                    "system variable " + var)
                 elif (isinstance(reg, list)):
                     all_values = ', '.join(map(str, reg))
                     self.__sys_vars[var] = '{' + all_values + '}'
                 else:
-                    printWarning("Unknown possible values for discrete system " + \
-                                     "variable " + var, obj=self)
+                    logger.warn("Unknown possible values for discrete system " + \
+                                "variable " + var)
 
         # New variable that identifies in which cell the continuous state is
         self.__disc_cont_var = ''
@@ -781,7 +780,7 @@ class SynthesisProb:
                                          file_exist_option='r', verbose=verbose)
         self.__realizable = realizable
         if (not realizable):
-            printError('spec not realizable', obj=self)
+            logger.error('spec not realizable')
             counter_examples = jtlvint.getCounterExamples(aut_file=aut_file, verbose=verbose)
             return counter_examples
         else:
@@ -813,10 +812,10 @@ class SynthesisProb:
 
         # Check that the input is valid
         if (not isinstance(smv_file, str)):
-            printError("The input smv_file is expected to be a string", obj=self)
+            logger.error("The input smv_file is expected to be a string")
             raise TypeError("Invalid smv_file.")
         if (not isinstance(spc_file, str)):
-            printError("The input spc_file is expected to be a string", obj=self)
+            logger.error("The input spc_file is expected to be a string")
             raise TypeError("Invalid spc_file.")
         
         if (len(smv_file) == 0):
@@ -826,19 +825,19 @@ class SynthesisProb:
 
         if (not os.path.exists(os.path.abspath(os.path.dirname(smv_file)))):
             if (verbose > 0):
-                printWarning('Folder for smv_file ' + smv_file + \
-                                 ' does not exist. Creating...', obj=self)
+                logger.warn('Folder for smv_file ' + smv_file + \
+                            ' does not exist. Creating...')
             os.mkdir(os.path.abspath(os.path.dirname(smv_file)))
         if (not os.path.exists(os.path.abspath(os.path.dirname(spc_file)))):
             if (verbose > 0):
-                printWarning('Folder for spc_file ' + spc_file + \
-                                 ' does not exist. Creating...', obj=self)
+                logger.warn('Folder for spc_file ' + spc_file + \
+                            ' does not exist. Creating...')
             os.mkdir(os.path.abspath(os.path.dirname(spc_file)))
 
         # Check whether the smv or spc file exists
         if (file_exist_option != 'r'):
             if (os.path.exists(smv_file)):
-                printWarning('smv file: ' + smv_file + ' exists.', obj=self)
+                logger.warn('smv file: ' + smv_file + ' exists.')
                 smv_file_exist_option = file_exist_option
                 while (smv_file_exist_option.lower() != 'r' and \
                            smv_file_exist_option.lower() != 'n'):
@@ -855,7 +854,7 @@ class SynthesisProb:
                     print('smv file: ' + smv_file)
 
             if (os.path.exists(spc_file)):
-                printWarning('spc file: ' + spc_file + ' exists.', obj=self)
+                logger.warn('spc file: ' + spc_file + ' exists.')
                 spc_file_exist_option = file_exist_option
                 while (spc_file_exist_option.lower() != 'r' and \
                            spc_file_exist_option.lower() != 'n'):
@@ -1115,7 +1114,7 @@ class ShortHorizonProb(SynthesisProb):
         verbose = args.get('verbose', 0)
 
         if (not isinstance(global_prob, SynthesisProb)):
-            printError("The input global_prob must be a SynthesisProb objects.", obj=self)
+            logger.error("The input global_prob must be a SynthesisProb objects.")
             raise TypeError("Invalid global_prob.")
         self.__global_prob = global_prob
         self.__global_spec = global_prob.getSpec()
@@ -1153,7 +1152,7 @@ class ShortHorizonProb(SynthesisProb):
         """ Set the set W of this short horizon problem.
         """
         if (not isinstance(W, str)):
-            printError("The input W must be a string.", obj=self)
+            logger.error("The input W must be a string.")
             raise TypeError("Invalid W.")
         self.__W = W
         if (update):
@@ -1170,8 +1169,8 @@ class ShortHorizonProb(SynthesisProb):
         if (FW is None):
             FW = []
         if (not isinstance(FW, list) and not isinstance(FW, ShortHorizonProb)):
-            printError("The input FW must be a ShortHorizonProb object or " + \
-                           "a list of ShortHorizonProb object.", obj=self)
+            logger.error("The input FW must be a ShortHorizonProb object or " + \
+                           "a list of ShortHorizonProb object.")
             raise TypeError("Invalid W.")
         if (isinstance(FW, list)):
             self.__FW = copy.copy(FW)
@@ -1189,7 +1188,7 @@ class ShortHorizonProb(SynthesisProb):
         """ Set the local invariant Phi of this short horizon problem.
         """
         if (not isinstance(Phi, str)):
-            printError("The input Phi must be a string.", obj=self)
+            logger.error("The input Phi must be a string.")
             raise TypeError("Invalid Phi.")
         self.__Phi = Phi
         if (update):
@@ -1408,16 +1407,16 @@ class RHTLPProb(SynthesisProb):
                 if (isinstance(shprob, ShortHorizonProb)):
                     self.shprobs.append(shprob)
                 else:
-                    printError("The input shprobs must be " + \
-                                   "a list of ShortHorizonProb objects.", obj=self)
+                    logger.error("The input shprobs must be " + \
+                                   "a list of ShortHorizonProb objects.")
         elif (shprobs is not None):
-            printError("The input shprobs must be " + \
-                           "a list of ShortHorizonProb objects.", obj=self)
+            logger.error("The input shprobs must be " + \
+                           "a list of ShortHorizonProb objects.")
 
         if (isinstance(Phi, str)):
             self.__Phi = Phi
         else:
-            printError("The input Phi must be a string.", obj=self)
+            logger.error("The input Phi must be a string.")
         
         
         verbose = args.get('verbose', 0)
@@ -1428,20 +1427,19 @@ class RHTLPProb(SynthesisProb):
         if (isinstance(cont_props, dict)):
             self.__cont_props = copy.deepcopy(cont_props)
         else:
-            printError("The input cont_props is expected to be a dictionary " + \
-                           "{str : Polytope}", obj=self)
+            logger.error("The input cont_props is expected to be a dictionary " + \
+                           "{str : Polytope}")
             raise TypeError("Invalid cont_props.")
                 
         spec = GRSpec(env_init='', sys_init='', env_safety='', sys_safety='', \
                           env_prog='', sys_prog='')
         if ('spec' in args.keys()):
             if (not isinstance(args['spec'], GRSpec)):
-                printError("The input spec must be a GRSpec objects.", obj=self)
+                logger.error("The input spec must be a GRSpec objects.")
                 raise TypeError("Invalid spec.")
             spec = copy.deepcopy(args['spec'])
             if (isinstance(spec.sys_prog, list) and len(spec.sys_prog) > 1):
-                printError("The input spec can have at most one system progress formula.", \
-                               obj=self)
+                logger.error("The input spec can have at most one system progress formula.")
                 raise TypeError("Invalid spec.")
             if (isinstance(spec.sys_prog, str)):
                 self.__sys_prog = spec.sys_prog
@@ -1471,10 +1469,10 @@ class RHTLPProb(SynthesisProb):
             file = args['file']
             # Check that the input is valid
             if (not isinstance(file, str)):
-                printError("The input file is expected to be a string", obj=self)
+                logger.error("The input file is expected to be a string")
                 raise TypeError("Invalid file.")
             if (not os.path.isfile(file)):
-                printError("The rhtlp file " + file + " does not exist.", obj=self)
+                logger.error("The rhtlp file " + file + " does not exist.")
                 raise TypeError("Invalid file.")
 
             (env_vars, sys_disc_vars, self.__disc_props, sys_cont_vars, cont_state_space, \
@@ -1483,7 +1481,7 @@ class RHTLPProb(SynthesisProb):
 
         elif ('disc_dynamics' in args.keys()):
             if (discretize):
-                printWarning('Discretized dynamics is already given.', obj=self)
+                logger.warn('Discretized dynamics is already given.')
             discretize = False
             disc_dynamics = args['disc_dynamics']
             if (len(self.__cont_props) == 0):
@@ -1493,8 +1491,8 @@ class RHTLPProb(SynthesisProb):
             else:
                 if (disc_dynamics is None or disc_dynamics.list_prop_symbol is None or \
                         not (set(self.__cont_props.keys()) == set(disc_dynamics.list_prop_symbol))):
-                    printWarning("The given cont_prop does not match the propositions" + \
-                                     " in the given disc_dynamics", obj=self)
+                    logger.warn("The given cont_prop does not match the propositions" + \
+                                " in the given disc_dynamics")
         else:        
             cont_state_space = args.get('cont_state_space', None)
             sys_dyn = args.get('sys_dyn', None)
@@ -1523,7 +1521,7 @@ class RHTLPProb(SynthesisProb):
         if (isinstance(shprob, ShortHorizonProb)):
             self.shprobs.append(shprob)
         else:
-            printError("The input shprob must be a ShortHorizonProb object.", obj=self)
+            logger.error("The input shprob must be a ShortHorizonProb object.")
 
 
     def getPhi(self):
@@ -1641,7 +1639,7 @@ class RHTLPProb(SynthesisProb):
                 curr_es_formula += var + ' = ' + str(val)
             es_formula += ' | (' + curr_es_formula + ')'
         else:
-            printError('excluded_state has to be a list or a dictionary.')
+            logger.error('excluded_state has to be a list or a dictionary.')
             raise TypeError("Invalid excluded_state.")
             
         try:
@@ -1662,7 +1660,7 @@ class RHTLPProb(SynthesisProb):
                 else:
                     return True
         except:
-            printError("The SMT solver failed!")
+            logger.error("The SMT solver failed!")
             print sys.exc_info()[0], sys.exc_info()[1]
         
         if ret is None:
@@ -1677,7 +1675,7 @@ class RHTLPProb(SynthesisProb):
                 try:
                     ret = rhtlputil.evalExpr(allW_formula, vardict, verbose)
                 except:
-                    printError('Invalid W', obj=self)
+                    logger.error('Invalid W')
                     print sys.exc_info()[0], sys.exc_info()[1]
                     return vardict
                 if (not ret):
@@ -1687,7 +1685,7 @@ class RHTLPProb(SynthesisProb):
     #                     if (len(state) > 0):
     #                         state += ', '
     #                     state += allvars_variables[i] + ':' + str(val[i])
-    #                 printError('state <' + state + '> is not in any W', obj=self)
+    #                 logger.error('state <' + state + '> is not in any W')
                     return vardict
             return True
 
@@ -1709,11 +1707,11 @@ class RHTLPProb(SynthesisProb):
                         if (tmpind >= 0):
                             fw_ind.append(tmpind)
                         else:
-                            printError("FW for shprobs[" + str(wind) + "]" + \
-                                           " is not in this RHTLPProb.", obj=self)
+                            logger.error("FW for shprobs[" + str(wind) + "]" + \
+                                           " is not in this RHTLPProb.")
                             raise Exception("Invalid FW.")
                     else:
-                        printError("Invalid FW", obj=self)
+                        logger.error("Invalid FW")
                         raise TypeError("Invalid FW.")
                 graph.append(fw_ind)
             elif (isinstance(shprob.getFW(), int)):
@@ -1723,11 +1721,11 @@ class RHTLPProb(SynthesisProb):
                 if (fw_ind >= 0):
                     graph.append([fw_ind])
                 else:
-                    printError("FW for shprobs[" + str(wind) + "]" + \
-                                   " is not in this RHTLPProb.", obj=self)
+                    logger.error("FW for shprobs[" + str(wind) + "]" + \
+                                   " is not in this RHTLPProb.")
                     raise Exception("Invalid FW.")
             else:
-                printError("Invalid FW for shprobs[" + str(wind) + "].", obj=self)
+                logger.error("Invalid FW for shprobs[" + str(wind) + "].")
                 raise TypeError("Invalid FW.")
         return graph
 
@@ -1774,7 +1772,7 @@ class RHTLPProb(SynthesisProb):
             if ret is None:
                 W0ind = newW0ind
         except:
-            printError("The SMT solver failed!")
+            logger.error("The SMT solver failed!")
             print sys.exc_info()[0], sys.exc_info()[1]
         
         if ret is None:
@@ -1789,7 +1787,7 @@ class RHTLPProb(SynthesisProb):
                 try:
                     ret = rhtlputil.evalExpr(self.__sys_prog, vardict, verbose)
                 except:
-                    printError('Invalid W', obj=self)
+                    logger.error('Invalid W')
                     print sys.exc_info()[0], sys.exc_info()[1]
                     print vardict
                     ret = False
@@ -1833,10 +1831,10 @@ class RHTLPProb(SynthesisProb):
                 if (not ret[0]):
                     return True
                 elif (verbose > 0):
-                    printInfo('sys_init -> Phi is not a tautology')
+                    logger.info('sys_init -> Phi is not a tautology')
                     print 'counter example: \n' + ret[1]
         except:
-            printError("The SMT solver failed!")
+            logger.error("The SMT solver failed!")
             print sys.exc_info()[0], sys.exc_info()[1]
         
         if ret is None:
@@ -1850,19 +1848,19 @@ class RHTLPProb(SynthesisProb):
                 try:
                     ret = rhtlputil.evalExpr(self.__all_init, vardict, verbose)
                 except:
-                    printError('Invalid initial condition', obj=self)
+                    logger.error('Invalid initial condition')
                     print sys.exc_info()[0], sys.exc_info()[1]
                     return False
                 if (ret):
                     try:
                         ret = rhtlputil.evalExpr(self.__Phi, vardict, verbose)
                     except:
-                        printError('Invalid Phi', obj=self)
+                        logger.error('Invalid Phi')
                         print sys.exc_info()[0], sys.exc_info()[1]
                         return False
                     if (not ret):
                         if (verbose > 0):
-                            printInfo('sys_init -> Phi is not a tautology')
+                            logger.info('sys_init -> Phi is not a tautology')
                             print 'counter example: ', vardict
                         return False
             return True
@@ -1949,10 +1947,10 @@ class RHTLPProb(SynthesisProb):
                 print 'Checking that the union of W covers the entire state space...'
             vardict = self.checkcovering(excluded_state=excluded_state, verbose=verbose)
             if (isinstance(vardict, dict)):                
-                printInfo('state ' + str(vardict) + ' is not in any W')
+                logger.info('state ' + str(vardict) + ' is not in any W')
                 return False
             elif (isinstance(vardict, str)):               
-                printInfo('state \n' + vardict + ' is not in any W')
+                logger.info('state \n' + vardict + ' is not in any W')
                 return False
                 
 
@@ -1974,14 +1972,14 @@ class RHTLPProb(SynthesisProb):
                     if (len(cycleStr) > 0):
                         cycleStr += ' -> '
                     cycleStr += 'W[' + str(i) + ']'
-                printInfo('Partial order condition is violated due to the cycle ' + cycleStr)
+                logger.info('Partial order condition is violated due to the cycle ' + cycleStr)
                 return False
 
             # Path to W0
             if (verbose > 1):
                 print 'Checking that there is a path to W0...'
             if (len(W0ind) == 0):
-                printInfo('Partial order condition violated. ' + \
+                logger.info('Partial order condition violated. ' + \
                               'No W0 since all W do not satisfy spec.sys_prog')
                 return False
             if (verbose > 0):
@@ -2002,7 +2000,7 @@ class RHTLPProb(SynthesisProb):
                             path_found = True
                             break
                     if (not path_found):
-                        printInfo('Partial order condition violated. ' + \
+                        logger.info('Partial order condition violated. ' + \
                                       'No path from W[' + str(wind) + ' to W0')
                         return False
                 
@@ -2013,7 +2011,7 @@ class RHTLPProb(SynthesisProb):
             self.updatePhi(verbose = verbose)
             tautology = self.checkTautologyPhi(verbose=verbose)
             if (not tautology):
-                printInfo('sys_init -> Phi is not a tautology.')
+                logger.info('sys_init -> Phi is not a tautology.')
                 return False
 
         # Check that all the short horizon specs are realizable
@@ -2027,7 +2025,7 @@ class RHTLPProb(SynthesisProb):
                 realizable = shprob.checkRealizability(heap_size=heap_size, pick_sys_init=False, \
                                                            verbose=verbose)
                 if (not realizable):
-                    printInfo('shprob[' + str(i) + '] is not realizable')
+                    logger.info('shprob[' + str(i) + '] is not realizable')
                     return False
             return True
 

@@ -55,7 +55,6 @@ from cvxopt import matrix,solvers
 import itertools
 import polytope as pc
 from prop2part import PropPreservingPartition, pwa_partition
-from errorprint import printWarning, printError, printInfo
 
 
 def _block_diag2(A,B):

@@ -1,4 +1,4 @@
-# Copyright (c) 2011-2013 by California Institute of Technology
+# Copyright (c) 2011-2014 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,6 +34,10 @@ Specification module
 """
 
 import re, copy, ltl_parse
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 class GRSpec:
     """
@@ -135,6 +139,16 @@ class GRSpec:
                 self.env_prog = []
             else:
                 self.env_prog = [self.env_prog]
+
+        logger.debug("Instantiated GRSpec with\n"\
+                     "\tenv_vars: "+str(self.env_vars)+"\n"\
+                     "\tsys_vars: "+str(self.sys_vars)+"\n"\
+                     "\tenv_init: ["+"\n\t\t, ".join(self.env_init)+"]\n"\
+                     "\tenv_safety: ["+"\n\t\t, ".join(self.env_safety)+"]\n"\
+                     "\tenv_prog: ["+"\n\t\t, ".join(self.env_prog)+"]\n"\
+                     "\tsys_init: ["+"\n\t\t, ".join(self.sys_init)+"]\n"\
+                     "\tsys_safety: ["+"\n\t\t, ".join(self.sys_safety)+"]\n"\
+                     "\tsys_prog: ["+"\n\t\t, ".join(self.sys_prog)+"]")
 
 
     def importGridWorld(self, gworld, offset=(0,0), controlled_dyn=True, nonbool=True):

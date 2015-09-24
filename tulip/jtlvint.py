@@ -41,9 +41,10 @@ import re, os, subprocess, sys
 from prop2part import PropPreservingPartition
 from polytope import Region
 import rhtlp
-from errorprint import printWarning, printError
 import check_spec
-import sys
+
+import logging
+logger = logging.getLogger(__name__)
 
 # Get jtlv_path
 JTLV_PATH = os.path.abspath(os.path.dirname(__file__))
@@ -376,9 +377,9 @@ def solveGame(smv_file, spc_file, aut_file='', heap_size='-Xmx128m', \
 
     # Check that the input is valid
     if (not os.path.isfile(smv_file)):
-        printError("The smv file " + smv_file + " does not exist.")
+        logger.error("The smv file " + smv_file + " does not exist.")
     if (not os.path.isfile(spc_file)):
-        printError("The spc file " + spc_file + " does not exist.")
+        logger.error("The spc file " + spc_file + " does not exist.")
 
     if (verbose > 0):
         print 'Creating automaton...\n'
@@ -389,13 +390,13 @@ def solveGame(smv_file, spc_file, aut_file='', heap_size='-Xmx128m', \
         aut_file = aut_file + '.aut'
         print('aut file: ' + aut_file)
     if (not os.path.exists(os.path.abspath(os.path.dirname(aut_file)))):
-        printWarning('Folder for aut_file ' + aut_file + ' does not exist. Creating...')
+        logger.warn("Folder for aut_file "+aut_file+" does not exist. Creating...")
         os.mkdir(os.path.abspath(os.path.dirname(aut_file)))
 
     # Check whether the aut file exists
     if (file_exist_option != 'r'):
         if (os.path.exists(aut_file)):
-            printWarning('aut file: ' + aut_file + ' exists.')
+            logger.warn("aut file: "+aut_file+" exists.")
             aut_file_exist_option = file_exist_option
             while (aut_file_exist_option.lower() != 'r' and \
                        aut_file_exist_option.lower() != 'n'):
@@ -431,25 +432,25 @@ def solveGame(smv_file, spc_file, aut_file='', heap_size='-Xmx128m', \
         elif (priority_kind == 'XYZ'):
             priority_kind = 23
         else:
-            printWarning("Unknown priority_kind. Setting it to the default (ZYX)")
+            logger.warn("Unknown priority_kind. Setting it to the default (ZYX)")
             priority_kind = 3
     elif (isinstance(priority_kind, int)):
         if (priority_kind > 0 and priority_kind != 3 and priority_kind != 7 and \
                 priority_kind != 11 and priority_kind != 15 and priority_kind != 19 and \
                 priority_kind != 23):
-            printWarning("Unknown priority_kind. Setting it to the default (ZYX)")
+            logger.warn("Unknown priority_kind. Setting it to the default (ZYX)")
             priority_kind = 3
     else:
-        printWarning("Unknown priority_kind. Setting it to the default (ZYX)")
+        logger.warn("Unknown priority_kind. Setting it to the default (ZYX)")
         priority_kind = 3
 
     # init_option
     if (isinstance(init_option, int)):
         if (init_option < 0 or init_option > 2):
-            printWarning("Unknown init_option. Setting it to the default (1)")
+            logger.warn("Unknown init_option. Setting it to the default (1)")
             init_option = 1
     else:
-        printWarning("Unknown init_option. Setting it to the default (1)")
+        logger.warn("Unknown init_option. Setting it to the default (1)")
         init_option = 1
 
     if (verbose > 0):

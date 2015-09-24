@@ -1,4 +1,4 @@
-# Copyright (c) 2012, 2013 by California Institute of Technology
+# Copyright (c) 2012-2014 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -49,6 +49,9 @@ import polytope as pc
 from prop2part import prop2part2, PropPreservingPartition
 from spec import GRSpec
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class GridWorld:
     def __init__(self, gw_desc=None, prefix="Y"):
@@ -60,6 +63,7 @@ class GridWorld:
                  gridworld cell variables.
         """
         if gw_desc is not None:
+            logger.debug("gw description:\n"+gw_desc)
             self.loads(gw_desc)
         else:
             self.W = None
@@ -67,6 +71,11 @@ class GridWorld:
             self.goal_list = []
         self.prefix = prefix
         self.offset = (0, 0)
+        logger.debug("Instantiated GridWorld with\n"\
+                     "\tprefix \""+str(self.prefix)+"\",\n"\
+                     "\toffset "+str(self.offset)+",\n"\
+                     "\tinitial positions list "+str(self.init_list)+",\n"\
+                     "\tand goal positions list "+str(self.goal_list))
 
     def __eq__(self, other):
         """Test for equality.
@@ -1126,6 +1135,7 @@ def random_world(size, wall_density=.2, num_init=1, num_goals=2, prefix="Y",
 
     @rtype: L{GridWorld}, or None if timeout occurs.
     """
+    logger.debug("random_world invoked with ensure_feasible="+str(ensure_feasible)+" and timeout="+str(timeout))
     if ensure_feasible and timeout is not None:
         st = time.time()
     num_cells = size[0]*size[1]
@@ -1155,6 +1165,7 @@ def random_world(size, wall_density=.2, num_init=1, num_goals=2, prefix="Y",
         bcounter += 1
         if ensure_feasible:
             if (timeout is not None) and (time.time()-st > timeout):
+                logger.warn("random_world ran out of time")
                 return None
             # If feasibility must be guaranteed, then check whether
             # the newly unreachable cell is permissible.
@@ -1186,6 +1197,8 @@ def random_world(size, wall_density=.2, num_init=1, num_goals=2, prefix="Y",
     if num_trolls > 0:
         world = MGridWorld(world)
         world.troll_list = troll_list
+    logger.debug("random_world completed with world of shape "+str(size) \
+                 + " and troll_list = "+str(world.troll_list))
     return world
 
     

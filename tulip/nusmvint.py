@@ -36,8 +36,10 @@
 import rhtlp, os, ltl_parse, time, copy, threading
 from subprocess import Popen, PIPE, STDOUT
 from prop2part import PropPreservingPartition
-from errorprint import printWarning, printError
 from solver_common import SolverException, memoryMonitor
+
+import logging
+logger = logging.getLogger(__name__)
 
 # total (OS + user) CPU time of children
 chcputime = (lambda: (lambda x: x[2] + x[3])(os.times()))
@@ -46,8 +48,8 @@ class NuSMVError(SolverException):
     pass
 
 class NuSMVInstance:
-    NUSMV_PATH = os.path.join(os.path.dirname(__file__), "solvers/NuSMV")
-    def __init__(self, model='tmp.smv', out='tmp.aut', path=NUSMV_PATH, verbose=0):
+    NUSMV_BIN_PREFIX = ""
+    def __init__(self, model='tmp.smv', out='tmp.aut', path=NUSMV_BIN_PREFIX+"NuSMV", verbose=0):
         self.model = model
         self.out = out
         self.verbose = verbose
@@ -56,7 +58,7 @@ class NuSMVInstance:
         try:
             self.instance = Popen([path, '-int', model], stdin=PIPE, stdout=PIPE, stderr=PIPE)
         except OSError:
-            printError("Could not execute " + path)
+            logger.error("Could not execute " + path)
             return
         def mmthread_run():
             self.max_mem = memoryMonitor(self.instance.pid)
@@ -109,8 +111,8 @@ def SMV_transitions(trans, var, turns=False):
 def writeSMV(smv_file, spec, modules, turns=False):
     if (not os.path.exists(os.path.abspath(os.path.dirname(smv_file)))):
         if (verbose > 0):
-            printWarning('Folder for smv_file ' + smv_file + \
-                             ' does not exist. Creating...', obj=self)
+            logger.warn("Folder for smv_file " + smv_file + \
+                        " does not exist. Creating...")
         os.mkdir(os.path.abspath(os.path.dirname(smv_file)))
     spec = spec[:]
     
@@ -177,7 +179,7 @@ def writeSMV(smv_file, spec, modules, turns=False):
         f.write("\tLTLSPEC\n")
         f.write("\t\t" + spec.toSMV() + "\n")
     else:
-        printWarning("No specification supplied.")
+        logger.warn("No specification supplied.")
 
     f.close()
     

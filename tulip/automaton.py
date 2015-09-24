@@ -1,4 +1,4 @@
-# Copyright (c) 2011-2013 by California Institute of Technology
+# Copyright (c) 2011-2014 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -38,8 +38,10 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import networkx as nx
 
-from errorprint import printWarning, printError
 import conxml
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class Automaton(nx.DiGraph):
@@ -134,7 +136,7 @@ class Automaton(nx.DiGraph):
             f = open(aut_file, 'r')
             closable = True
         except IOError:
-            printWarning("Could not open " + aut_file + " for reading")
+            logger.warn("Could not open " + aut_file + " for reading")
             return
         except TypeError:
             # assume aut_file is already a file object
@@ -157,12 +159,6 @@ class Automaton(nx.DiGraph):
                         self.add_edge(nodeID, nodeID+1)
                     nodeID += 1
                 val_change = False
-                #try:
-                #    nodeID = int(nodeID.group(1)) - 1 # start numbering from 0
-                #except:
-                #    printWarning("SMV aut parsing failed on line " + str(lineno) +
-                #                ":\n\t" + line)
-                #    return
             elif loop_text in line:
                 loopState = nodeID + 1
             else:
@@ -173,7 +169,7 @@ class Automaton(nx.DiGraph):
                     # probably a comment line, ignore
                     continue
                 if varnames and not var in varnames:
-                    printWarning('Unknown variable ' + var, obj=self)
+                    logger.warn("Unknown variable " + var)
                 try:
                     if var not in valuation or not valuation[var] == int(val):
                         val_change = True
@@ -222,7 +218,7 @@ class Automaton(nx.DiGraph):
                         state[var] = val
                     if (len(varnames) > 0):
                         if not var in varnames:
-                            printWarning('Unknown variable ' + var, obj=self)
+                            logger.warn("Unknown variable " + var)
                 if (len(state.keys()) < len(varnames)):
                     for var in varnames:
                         var_found = False
@@ -230,7 +226,7 @@ class Automaton(nx.DiGraph):
                             if (var == var2):
                                 var_found = True
                         if (not var_found):
-                            printWarning('Variable ' + var + ' not assigned', obj=self)
+                            logger.warn("Variable "+var+" not assigned")
                 self.add_node(nodeID, state=state, mode=-1, rgrad=-1)
 
             # parse transitions
@@ -328,7 +324,7 @@ class Automaton(nx.DiGraph):
                             agent_name = agent_candidate
                             break
                     if agent_name is None:
-                        printWarning("variable \""+k+"\" does not belong to an agent in distinguishedTurns")
+                        logger.warn("variable \""+k+"\" does not belong to an agent in distinguishedTurns")
                         return False
 
                     if len(state_labels[str(node)+agent_name]) == 0:
@@ -717,7 +713,7 @@ class Automaton(nx.DiGraph):
             if tag_name != ns_prefix+"state":
                 raise ValueError("failure of consistency check while processing aut XML string.")
             if this_id in id_list:
-                printWarning("duplicate nodes found: "+str(this_id)+"; ignoring...")
+                logger.warn("duplicate nodes found: "+str(this_id)+"; ignoring...")
                 continue
             id_list.append(this_id)
             A.add_node(this_id, state=copy.copy(this_state),

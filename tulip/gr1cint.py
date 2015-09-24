@@ -1,4 +1,4 @@
-# Copyright (c) 2012, 2013 by California Institute of Technology
+# Copyright (c) 2012-2014 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,14 +32,19 @@
 """
 Interface to gr1c
 
-About gr1c, see http://scottman.net/2012/gr1c
+  - U{http://scottman.net/2012/gr1c}
+  - release documentation at U{http://slivingston.github.io/gr1c/}
 
-In general, functions defined here will raise CalledProcessError (from
-the subprocess module) or OSError if an exception occurs while
-interacting with the gr1c executable.
+All functions that directly invoke gr1c include an argument toollog
+that defaults to 1.  It concerns what level of logging, if any, to
+request from gr1c.  The interpretation is, in terms of flags to gr1c,
 
-Most functions have a "verbose" argument.  0 means silent (the default
-setting), positive means provide some status updates.
+  - 0 : No logging (no additional flags provided)
+  - 1 : Logging (-l)
+  - 2 : Verbose logging (-l -vv)
+
+Verbose logging has the potential to substantially slow down the
+process due to frequent writing to hard disk.
 """
 
 import copy
@@ -49,57 +54,85 @@ import os
 
 from conxml import loadXML
 from spec import GRSpec
-from errorprint import printWarning, printError
+
+import logging
+logger = logging.getLogger(__name__)
 
 GR1C_BIN_PREFIX=""
 
-def check_syntax(spec_str, verbose=0):
+
+def check_syntax(spec_str, toollog=1):
     """Check whether given string has correct gr1c specification syntax.
 
     Return True if syntax check passed, False on error.
     """
+    if toollog < 0:
+        raise ValueError("Argument toollog must be nonnegative")
+    if toollog == 0:
+        log_settings = []
+    elif toollog == 1:
+        log_settings = ["-l"]
+    else:
+        log_settings = ["-l", "-vv"]
+
     f = tempfile.TemporaryFile()
     f.write(spec_str)
     f.seek(0)
-    p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "-s"],
+    p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "-s"]+log_settings,
                          stdin=f,
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     p.wait()
     if p.returncode == 0:
         return True
     else:
-        if verbose > 0:
-            print p.stdout.read()
+        if toollog > 0:
+            logger.debug(p.stdout.read())
         return False
 
 
-def check_realizable(spec, verbose=0):
+def check_realizable(spec, toollog=1):
     """Decide realizability of specification defined by given GRSpec object.
 
     Return True if realizable, False if not, or an error occurs.
     """
+    if toollog < 0:
+        raise ValueError("Argument toollog must be nonnegative")
+    if toollog == 0:
+        log_settings = []
+    elif toollog == 1:
+        log_settings = ["-l"]
+    else:
+        log_settings = ["-l", "-vv"]
+
     f = tempfile.TemporaryFile()
     f.write(spec.dumpgr1c())
     f.seek(0)
-    p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "-r"],
+    p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "-r"]+log_settings,
                          stdin=f,
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     p.wait()
     if p.returncode == 0:
         return True
     else:
-        if verbose > 0:
-            print p.stdout.read()
+        if toollog > 0:
+            logger.debug(p.stdout.read())
         return False
 
 
-def synthesize_reachgame(spec, verbose=0):
+def synthesize_reachgame(spec, toollog=1):
     """Synthesize strategy for a "reachability game."
 
     Return strategy as instance of Automaton class, or None if
     unrealizable or error occurs.
     """
-    p = subprocess.Popen([GR1C_BIN_PREFIX+"rg", "-t", "tulip"],
+    if toollog < 0:
+        raise ValueError("Argument toollog must be nonnegative")
+    if toollog == 0:
+        log_settings = []
+    else:
+        # rg does not provide for -vv (more verbose)
+        log_settings = ["-l"]
+    p = subprocess.Popen([GR1C_BIN_PREFIX+"rg", "-t", "tulip"]+log_settings,
                          stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     (stdoutdata, stderrdata) = p.communicate(spec.dumpgr1c_rg())
@@ -107,34 +140,39 @@ def synthesize_reachgame(spec, verbose=0):
         (prob, sys_dyn, aut) = loadXML(stdoutdata)
         return aut
     else:
-        if verbose > 0:
-            print stdoutdata
+        if toollog > 0:
+            logger.debug(stdoutdata)
         return None
 
 
-def synthesize(spec, verbose=0):
+def synthesize(spec, toollog=1):
     """Synthesize strategy.
 
     Return strategy as instance of Automaton class, or None if
     unrealizable or error occurs.
     """
-    if verbose == 0:
-        args = [GR1C_BIN_PREFIX+"gr1c", "-t", "tulip"]
+    if toollog < 0:
+        raise ValueError("Argument toollog must be nonnegative")
+    if toollog == 0:
+        log_settings = []
+    elif toollog == 1:
+        log_settings = ["-l"]
     else:
-        args = [GR1C_BIN_PREFIX+"gr1c", "-l", "-t", "tulip"]
-    p = subprocess.Popen(args, stdin=subprocess.PIPE,
+        log_settings = ["-l", "-vv"]
+    p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "-t", "tulip"]+log_settings,
+                         stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     (stdoutdata, stderrdata) = p.communicate(spec.dumpgr1c())
     if p.returncode == 0:
         (prob, sys_dyn, aut) = loadXML(stdoutdata)
         return aut
     else:
-        if verbose > 0:
-            print stdoutdata
+        if toollog > 0:
+            logger.debug(stdoutdata)
         return None
 
 def patch_localfixpoint(spec, aut, N, change_list,
-                        base_filename="patch_localfixpoint", verbose=0):
+                        base_filename="patch_localfixpoint", toollog=1):
     """Use an experimental patching algorithm, available through gr1c.
 
       S.C. Livingston, P. Prabhakar, A.B. Jose, R.M. Murray.
@@ -159,6 +197,15 @@ def patch_localfixpoint(spec, aut, N, change_list,
 
     Returns patched strategy, or None if unrealizable (or error).
     """
+    if toollog < 0:
+        raise ValueError("Argument toollog must be nonnegative")
+    if toollog == 0:
+        log_settings = []
+    elif toollog == 1:
+        log_settings = ["-l"]
+    else:
+        log_settings = ["-l", "-vv"]
+
     chg_filename = base_filename+"_changefile.edc"
     spc_filename = base_filename+"_specfile.spc"
     if len(N) == 0:  # Trivially unrealizable
@@ -205,13 +252,11 @@ def patch_localfixpoint(spec, aut, N, change_list,
     aut_in_f.write(aut.dumpgr1c(env_vars=spec.env_vars, sys_vars=spec.sys_vars))
     aut_in_f.seek(0)
     aut_out_f = tempfile.TemporaryFile()
-    if verbose == 0:
-        args = [GR1C_BIN_PREFIX+"grpatch", "-t", "tulip",
-                "-a", "-", "-e", chg_filename, spc_filename]
-    else:
-        args = [GR1C_BIN_PREFIX+"grpatch", "-l", "-t", "tulip",
-                "-a", "-", "-e", chg_filename, spc_filename]
-    p = subprocess.Popen(args, stdin=aut_in_f, stdout=aut_out_f,
+    p = subprocess.Popen([GR1C_BIN_PREFIX+"grpatch"] \
+                         +log_settings \
+                         +["-t", "tulip", "-a", "-", "-e", chg_filename,
+                           spc_filename],
+                         stdin=aut_in_f, stdout=aut_out_f,
                          stderr=subprocess.STDOUT)
     p.wait()
     aut_out_f.seek(0)
@@ -219,13 +264,13 @@ def patch_localfixpoint(spec, aut, N, change_list,
         (prob, sys_dyn, patched_aut) = loadXML(aut_out_f.read())
         return patched_aut
     else:
-        if verbose > 0:
-            print aut_out_f.read()
+        if toollog > 0:
+            logger.debug(aut_out_f.read())
         return None
 
 
 def add_sysgoal(spec, aut, new_sysgoal, metric_vars=None,
-                base_filename="add_sysgoal", verbose=0):
+                base_filename="add_sysgoal", toollog=1):
     """Use an experimental patching algorithm, available through gr1c
 
     spec is an instance of GRSpec, aut is the nominal strategy
@@ -240,6 +285,14 @@ def add_sysgoal(spec, aut, new_sysgoal, metric_vars=None,
 
     Return patched strategy, or None if unrealizable (or error).
     """
+    if toollog < 0:
+        raise ValueError("Argument toollog must be nonnegative")
+    if toollog == 0:
+        log_settings = []
+    elif toollog == 1:
+        log_settings = ["-l"]
+    else:
+        log_settings = ["-l", "-vv"]
     if metric_vars is None:
         metric_vars = []
     spc_filename = base_filename+"_specfile.spc"
@@ -249,26 +302,21 @@ def add_sysgoal(spec, aut, new_sysgoal, metric_vars=None,
     aut_in_f.write(aut.dumpgr1c(env_vars=spec.env_vars, sys_vars=spec.sys_vars))
     aut_in_f.seek(0)
     aut_out_f = tempfile.TemporaryFile()
-    if verbose == 0:
-        p = subprocess.Popen([GR1C_BIN_PREFIX+"grpatch", "-t", "tulip",
-                              "-a", "-", "-f", new_sysgoal,
-                              "-m", " ".join(metric_vars), spc_filename],
-                             stdin=aut_in_f,
-                             stdout=aut_out_f, stderr=subprocess.STDOUT)
-    else:
-        p = subprocess.Popen([GR1C_BIN_PREFIX+"grpatch", "-vv", "-l", "-t", "tulip",
-                              "-a", "-", "-f", new_sysgoal,
-                              "-m", " ".join(metric_vars), spc_filename],
-                             stdin=aut_in_f,
-                             stdout=aut_out_f, stderr=subprocess.STDOUT)
+    p = subprocess.Popen([GR1C_BIN_PREFIX+"grpatch"] \
+                         +log_settings \
+                         +["-t", "tulip", "-a", "-", "-f", new_sysgoal,
+                           "-m", " ".join(metric_vars), spc_filename],
+                         stdin=aut_in_f,
+                         stdout=aut_out_f, stderr=subprocess.STDOUT)
+
     p.wait()
     aut_out_f.seek(0)
     if p.returncode == 0:
         (prob, sys_dyn, patched_aut) = loadXML(aut_out_f.read())
         return patched_aut
     else:
-        if verbose > 0:
-            print aut_out_f.read()
+        if toollog > 0:
+            logger.debug(aut_out_f.read())
         return None
 
 

@@ -47,8 +47,10 @@ import automaton
 import prop2part
 import polytope as pc
 import jtlvint
-import errorprint as ep
 from spec import GRSpec
+
+import logging
+logger = logging.getLogger(__name__)
 
 from StringIO import StringIO
 try:
@@ -232,7 +234,7 @@ def loadXML(x, verbose=0, namespace=DEFAULT_NAMESPACE):
         aut = automaton.Automaton()
         if not aut.loadXML(aut_elem, namespace=namespace,
                            version=version):
-            ep.printError("failed to read Automaton from given tulipcon XML string.")
+            logger.error("failed to read Automaton from given tulipcon XML string.")
             aut = None
 
     # Discrete dynamics, if available

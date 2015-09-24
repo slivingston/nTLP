@@ -37,7 +37,9 @@ Originally by Nok Wongpiromsarn (nok@cds.caltech.edu), August 25, 2010.
 
 import re, copy, os
 from itertools import product
-from errorprint import printError, printWarning
+
+import logging
+logger = logging.getLogger(__name__)
 
 CVC4_BIN_PREFIX=""
 
@@ -90,7 +92,7 @@ def evalExpr(expr='', vardict={}, verbose=0):
                 elif (expr[ass_start_ind] == ')'):
                     num_paren += 1
             if (num_paren != -1):
-                printError('ERROR rhtlputil.evalExpr: ' + \
+                logger.error('ERROR rhtlputil.evalExpr: ' + \
                            'Invalid formula. Unbalanced parenthesis in ' + \
                                expr[:right_expr_end_ind+1])
                 raise Exception("Invalid formula")
@@ -109,7 +111,7 @@ def evalExpr(expr='', vardict={}, verbose=0):
             ret = evalExpr(reduced_expr, vardict, verbose)
             return ret
         else:
-            printError('ERROR rhtlputil.evalExpr: ' + \
+            logger.error('ERROR rhtlputil.evalExpr: ' + \
                            "Invalid formula. Too many '(' in " + right_expr)
             raise Exception("Invalid formula")
 
@@ -140,7 +142,7 @@ def yicesSolveSat(expr='', allvars={}, ysfile='', verbose=0):
         if (verbose > 1):
             print line,
         if ('Error' in line):
-            printError("yices error: ")
+            logger.error("yices error: ")
             print line
             return None
         if ('unsat' in line):
@@ -186,7 +188,7 @@ def toYices(expr='', allvars={}, ysfile='', verbose=0):
 
     if not os.path.exists(os.path.abspath(os.path.dirname(ysfile))):
         if verbose > 0:
-            printWarning("Folder for ysfile " + ysfile + " does not exist. Creating...", obj=None)
+            logger.warn("Folder for ysfile " + ysfile + " does not exist. Creating...")
         os.mkdir(os.path.abspath(os.path.dirname(ysfile)))
     f = open(ysfile, 'w')
 
@@ -200,7 +202,7 @@ def toYices(expr='', allvars={}, ysfile='', verbose=0):
             elif (isinstance(val, list)):
                 tmp = tmp = [str(i) for i in val]
             else:
-                printError('Unknown type of variable ' + var)
+                logger.error('Unknown type of variable ' + var)
                 raise TypeError("Invalid variable type.")
 
             tmpstr = ''
@@ -233,7 +235,7 @@ def expr2ysstr(expr='', verbose=0):
     numoparen = expr.count('(')
     numcparen = expr.count(')')
     if (numoparen != numcparen):
-        printError("Unbalanced parenthesis. " + str(numoparen) + " of '(' and " + \
+        logger.error("Unbalanced parenthesis. " + str(numoparen) + " of '(' and " + \
                        str(numcparen) + " of ')'")
         raise Exception("Invalid formula")
 
@@ -250,14 +252,14 @@ def expr2ysstr(expr='', verbose=0):
                         oparen_ind.append(ind)
             elif (expr[ind] == ')'):
                 if (num_paren <= 0):
-                    printError("Unbalanced parenthesis. Extra ')' at position " + str(ind))
+                    logger.error("Unbalanced parenthesis. Extra ')' at position " + str(ind))
                     raise Exception("Invalid formula")
                 num_paren -= 1 
                 if (num_paren == 0):
                     cparen_ind.append(ind)
 
         if (len(oparen_ind) != len(cparen_ind)):
-            printError("Unbalanced parenthesis.")
+            logger.error("Unbalanced parenthesis.")
             raise Exception("Invalid formula")
         if (verbose > 3):
             print('oparen_ind = ' + str(oparen_ind))
@@ -330,24 +332,24 @@ def expr2ysstr(expr='', verbose=0):
     if (indeq > 0 or indgr > 0 or indle > 0):
         numeq = expr.count('=')
         if (numeq > 1):
-            printError("Too many '=' in " + expr)
+            logger.error("Too many '=' in " + expr)
             raise Exception("Invalid formula")
         numgr = expr.count('>')
         if (numgr > 1):
-            printError("Too many '>' in " + expr)
+            logger.error("Too many '>' in " + expr)
             raise Exception("Invalid formula")
         numle = expr.count('<')
         if (numle > 1):
-            printError("Too many '<' in " + expr)
+            logger.error("Too many '<' in " + expr)
             raise Exception("Invalid formula")
         if (numle == 1 and numgr == 1):
-            printError("The subformula " + expr + " contains both > and <")
+            logger.error("The subformula " + expr + " contains both > and <")
             raise Exception("Invalid formula")
         if (numeq == 1 and numgr == 1 and indeq != indgr + 1):
-            printError("The subformula " + expr + " contains both > and =")
+            logger.error("The subformula " + expr + " contains both > and =")
             raise Exception("Invalid formula")
         if (numeq == 1 and numle == 1 and indeq != indle + 1):
-            printError("The subformula " + expr + " contains both < and =")
+            logger.error("The subformula " + expr + " contains both < and =")
             raise Exception("Invalid formula")
 
         if (numeq == 1 and numgr == 1): # >=
@@ -415,7 +417,7 @@ def expr2ysstr(expr='', verbose=0):
         if (len(leftexpr) == 0):
             leftexpr = '0'
         if (not (leftexpr[-1].isalnum() or leftexpr[-1] == ')')):
-            printError("Invalid subformula " + leftexpr)
+            logger.error("Invalid subformula " + leftexpr)
             raise Exception("Invalid formula")
         retstr = '(' + op + ' ' + expr2ysstr(leftexpr, verbose=verbose) + ' ' + \
             expr2ysstr(rightexpr, verbose=verbose) + ')'
@@ -452,19 +454,19 @@ def __toYicesSepExpr(leftexpr, rightexpr, paren_tmp, isbinary=True, checkleft=Tr
     if (checkleft):
         if (isbinary):
             if (len(leftexpr) == 0 or not (leftexpr[-1].isalnum() or leftexpr[-1] == ')')):
-                printError("Invalid subformula " + leftexpr)
+                logger.error("Invalid subformula " + leftexpr)
                 raise Exception("Invalid formula")
         elif (len(leftexpr) > 0): # The case where the operator is !
             if((leftexpr[-1] != '(' and leftexpr[-1] != '&' and \
                    leftexpr[-1] != '|') or (len(leftexpr) > 1 and leftexpr[-2:] != '->')):
-                printError("Invalid subformula " + leftexpr)
+                logger.error("Invalid subformula " + leftexpr)
                 raise Exception("Invalid formula")
 
     rightexpr = rightexpr.strip()
     if (checkright):
         if (len(rightexpr) == 0 or not (rightexpr[0].isalnum() or rightexpr[0] == '(' \
                                             or rightexpr[0] == '!')):
-            printError("Invalid subformula " + rightexpr)
+            logger.error("Invalid subformula " + rightexpr)
             raise Exception("Invalid formula")
 
     return leftexpr, rightexpr
