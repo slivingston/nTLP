@@ -716,6 +716,10 @@ class GridWorld:
                     t[flat(*path[(n-1)%len(path)])] = 1
                 trans.append(t)
         return trans
+
+    def mspec(self):
+        """Forward-compatibility with L{MGridWorld}."""
+        return self.spec()
         
     def spec(self, offset=(0, 0), controlled_dyn=True, nonbool=True):
         """Return GRSpec instance describing this gridworld.
