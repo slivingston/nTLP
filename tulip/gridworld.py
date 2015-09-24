@@ -1197,11 +1197,15 @@ def random_world(size, wall_density=.2, num_init=1, num_goals=2, prefix="Y",
     if num_trolls > 0:
         world = MGridWorld(world)
         world.troll_list = troll_list
-    logger.debug("random_world completed with world of shape "+str(size) \
-                 + " and troll_list = "+str(world.troll_list))
+
+    if logger.isEnabledFor(logging.DEBUG):
+        lmsg = "random_world completed with world of shape "+str(size)
+        if num_trolls > 0:
+            lmsg += " and troll_list = "+str(world.troll_list)
+        logger.debug(lmsg)
     return world
 
-    
+
 def narrow_passage(size, passage_width=1, num_init=1, num_goals=2,
             passage_length=0.4, ptop=None, prefix="Y"):
     """Generate a narrow-passage world: this is a world containing 
