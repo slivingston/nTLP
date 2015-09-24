@@ -132,7 +132,7 @@ def synthesize_reachgame(spec, toollog=1):
     else:
         # rg does not provide for -vv (more verbose)
         log_settings = ["-l"]
-    p = subprocess.Popen([GR1C_BIN_PREFIX+"rg", "-t", "tulip"]+log_settings,
+    p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "rg", "-t", "tulip"]+log_settings,
                          stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     (stdoutdata, stderrdata) = p.communicate(spec.dumpgr1c_rg())
@@ -252,7 +252,7 @@ def patch_localfixpoint(spec, aut, N, change_list,
     aut_in_f.write(aut.dumpgr1c(env_vars=spec.env_vars, sys_vars=spec.sys_vars))
     aut_in_f.seek(0)
     aut_out_f = tempfile.TemporaryFile()
-    p = subprocess.Popen([GR1C_BIN_PREFIX+"grpatch"] \
+    p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "patch"] \
                          +log_settings \
                          +["-t", "tulip", "-a", "-", "-e", chg_filename,
                            spc_filename],
@@ -302,7 +302,7 @@ def add_sysgoal(spec, aut, new_sysgoal, metric_vars=None,
     aut_in_f.write(aut.dumpgr1c(env_vars=spec.env_vars, sys_vars=spec.sys_vars))
     aut_in_f.seek(0)
     aut_out_f = tempfile.TemporaryFile()
-    p = subprocess.Popen([GR1C_BIN_PREFIX+"grpatch"] \
+    p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "patch"] \
                          +log_settings \
                          +["-t", "tulip", "-a", "-", "-f", new_sysgoal,
                            "-m", " ".join(metric_vars), spc_filename],
