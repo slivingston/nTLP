@@ -933,6 +933,12 @@ class MGridWorld(GridWorld):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __copy__(self):
+        return MGridWorld(self.dumps(), prefix=self.prefix)
+
+    def copy(self):
+        return self.__copy__()
+
     def __str__(self):
         return self.pretty(show_grid=True)
 
@@ -941,10 +947,12 @@ class MGridWorld(GridWorld):
         """
         return GridWorld.pretty(self, show_grid=show_grid, line_prefix=line_prefix, path=path, goal_order=goal_order, troll_list=self.troll_list)
 
-    def plot(self, font_pt=18, show_grid=False, grid_width=2):
+    def plot(self, font_pt=18, show_grid=False, grid_width=2, troll_list=None):
         """Wrap L{GridWorld.plot}, using troll_list of this object.
         """
-        return GridWorld.plot(self, font_pt=font_pt, show_grid=show_grid, grid_width=grid_width, troll_list=self.troll_list)
+        if troll_list is None:
+            troll_list = self.troll_list
+        return GridWorld.plot(self, font_pt=font_pt, show_grid=show_grid, grid_width=grid_width, troll_list=troll_list)
 
     def loads(self, gw_desc):
         """Reincarnate using obstacle-annotated gridworld description string.
@@ -1024,12 +1032,12 @@ class MGridWorld(GridWorld):
             out_str += "\n"
         return out_str
 
-    def mspec(self, troll_prefix="X"):
+    def mspec(self, troll_prefix="X", get_moves_lists=False):
         """
 
         Cf. L{GridWorld.spec} and L{add_trolls}.
         """
-        return add_trolls(self, self.troll_list, get_moves_lists=False, prefix=troll_prefix)
+        return add_trolls(self, self.troll_list, get_moves_lists=get_moves_lists, prefix=troll_prefix)
 
 
 class CGridWorld(GridWorld):

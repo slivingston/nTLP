@@ -5,8 +5,9 @@ cell problems.  Results are pickled and saved to a file named
 
   simdata_localmu_unreach-YYYYMMDD-HHMMSS.pickle
 
-where "YYYYMMDD-HHMMSS" is the timestamp at time of invocation.  The
-pickled data is a list called "simdata", where each element is a tuple
+where "YYYYMMDD-HHMMSS" is the timestamp at time of invocation in UTC
+(which may differ from your local timezone).  The pickled data is a
+list called "simdata", where each element is a tuple
 
   (Y_desc, troll_list, blocked_cell, result_code, globaltime, success_radius, success_patchingtime, total_patchingtime)
 
@@ -26,14 +27,14 @@ where
 Gridworld cells can be represented using Boolean-valued variables or
 variables over finite integral domains in terms of the GR(1) formula.
 The default is to use integral variables.  To use Boolean variables
-instead, change the NONBOOL flag to False (near line 48 of
+instead, change the NONBOOL flag to False (near line 58 of
 stats_localmu_unreach_discrete.py).
 
 Core simulation parameters can be adjusted near the top of the script.
-E.g., (num_rows, num_cols) on line 61 defines the gridworld size.
+E.g., (num_rows, num_cols) on line 67 defines the gridworld size.
 
 
-SCL; 7 May 2013.
+SCL; 2 Feb 2014.
 """
 
 import sys
@@ -45,6 +46,11 @@ from tulip.spec import GRSpec
 from tulip import gr1cint
 from tulip.incremental import unreachable_cell_discrete
 
+# Configure logging
+import tulip
+#tulip.log_setlevel("DEBUG")
+tulip.log_echotofile()
+
 import cPickle
 from cProfile import Profile
 
@@ -53,7 +59,7 @@ NONBOOL=True
 
 if __name__ == "__main__":
 
-    outfilename = "simdata_localmu_unreach-"+time.strftime("%Y%m%d-%H%M%S")+".pickle"
+    outfilename = "simdata_localmu_unreach-"+time.strftime("%Y%m%d-%H%M%S", time.gmtime())+".pickle"
     print "Results will be saved to "+outfilename+"..."
 
     total_it = 20
@@ -66,28 +72,14 @@ if __name__ == "__main__":
     while num_it < total_it:
         Y = gw.random_world((num_rows, num_cols),
                             wall_density=.2, num_init=1, num_goals=10,
-                            prefix="Y")#, ensure_feasible=True, timeout=15)
-        if not gr1cint.check_realizable(Y.spec()):
-            print "Random gridworld is not deterministically realizable.  Trying again..."
-            continue
-        # if Y is None:
-        #     print "Timed out while looking for feasible random gridworld."
-        #     continue
-
-        troll_list = []
-        troll_list.append(((int(np.random.rand()*num_rows),
-                            int(np.random.rand()*num_cols)), 1))
-        while (not Y.isEmpty(troll_list[-1][0])) or (troll_list[-1][0] in Y.goal_list) or (troll_list[-1][0] in Y.init_list):
-            troll_list[-1] = ((int(np.random.rand()*num_rows),
-                               int(np.random.rand()*num_cols)), 1)
-
-        (spec, moves_N) = gw.add_trolls(Y, troll_list, nonbool=NONBOOL)
+                            num_trolls=1, prefix="Y")
+        (spec, moves_N) = Y.mspec(get_moves_lists=True)
         if not gr1cint.check_realizable(spec):
             print "o",
             continue
 
         orig_prof = Profile()
-        orig_prof.run("aut = gr1cint.synthesize(spec, verbose=1)")
+        orig_prof.run("aut = gr1cint.synthesize(spec)")
         ind = -1
         while not hasattr(orig_prof.getstats()[ind].code, "co_name") or (orig_prof.getstats()[ind].code.co_name != "synthesize"):
             ind -= 1
@@ -106,8 +98,8 @@ if __name__ == "__main__":
         Y_reglobal = Y.copy()
         Y_reglobal.setOccupied(blocked_cell)
         global_prof = Profile()
-        (spec_reglobal, moves_N_reglobal) = gw.add_trolls(Y_reglobal, troll_list[:], nonbool=NONBOOL)
-        global_prof.run("aut = gr1cint.synthesize(spec_reglobal, verbose=1)")
+        (spec_reglobal, moves_N_reglobal) = Y_reglobal.mspec(get_moves_lists=True)
+        global_prof.run("aut = gr1cint.synthesize(spec_reglobal)")
         ind = -1
         while not hasattr(global_prof.getstats()[ind].code, "co_name") or (global_prof.getstats()[ind].code.co_name != "synthesize"):
             ind -= 1
@@ -119,7 +111,7 @@ if __name__ == "__main__":
         num_it += 1
 
         print Y
-        print troll_list
+        print Y.troll_list
         print "Blocked cell: "+str(blocked_cell)
 
         st = time.time()
@@ -132,7 +124,7 @@ if __name__ == "__main__":
         total_patchingtime = time.time() - st
         if aut_patched is None:
             print "Patching failed"
-            simdata.append((Y.dumps(), troll_list[:], blocked_cell, -1, globaltime, -1, -1, -1))
+            simdata.append((Y.dumps(), Y.troll_list[:], blocked_cell, -1, globaltime, -1, -1, -1))
             continue
         
 
@@ -141,7 +133,7 @@ if __name__ == "__main__":
             ind -= 1
         pat_time = pat_prof.getstats()[ind].totaltime
 
-        simdata.append((Y.dumps(), troll_list[:], blocked_cell, 0, globaltime, nbhd_radius, pat_time, total_patchingtime))
+        simdata.append((Y.dumps(), Y.troll_list[:], blocked_cell, 0, globaltime, nbhd_radius, pat_time, total_patchingtime))
 
         #print "Original time: "+str(orig_time)
         print "Patching time: "+str(pat_time)

@@ -5,7 +5,7 @@ stats_localmu_unreach_discrete.py.
 Try calling this script with "-h" for help.
 
 
-SCL; 20 August 2012.
+SCL; 2 Feb 2014.
 """
 
 import sys
@@ -16,7 +16,7 @@ import tulip.gridworld as gw
 
 
 def trial_print(Y_desc, troll_list, blocked_cell, result_code, globaltime, success_radius, success_patchingtime, total_patchingtime):
-    Y = gw.GridWorld(Y_desc)
+    Y = gw.MGridWorld(Y_desc)
     print Y
     print troll_list
     print blocked_cell
@@ -72,7 +72,7 @@ FILE is the simulation data file, and if given, TRIAL is the trial number
         trial_print(*simdata[int(sys.argv[2])])
         print "\n### gridworld description string ###"
         print simdata[int(sys.argv[2])][0]
-        Y = gw.GridWorld(simdata[int(sys.argv[2])][0])
+        Y = gw.MGridWorld(simdata[int(sys.argv[2])][0])
         troll_list = simdata[int(sys.argv[2])][1]
         if draw_fig:
             Y.plot(font_pt=0, show_grid=True, troll_list=troll_list)
