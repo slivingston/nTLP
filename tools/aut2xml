@@ -38,4 +38,5 @@ if __name__ == "__main__":
             destfile = sys.argv[1][:-4] + ".xml"
     
     aut = Automaton(sys.argv[1])
+    print "Read automaton has "+str(len(aut))+" nodes."
     writeXMLfile(destfile, aut=aut, pretty=True)

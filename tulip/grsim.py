@@ -1,6 +1,4 @@
-# !/usr/bin/env python
-#
-# Copyright (c) 2011 by California Institute of Technology
+# Copyright (c) 2011, 2012 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,8 +29,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
-# 
-# $Id$
 """ 
 -----------------
 Simulation Module
@@ -44,7 +40,7 @@ import random
 from multiprocessing import Process
 from subprocess import call
 
-from automaton import Automaton, AutomatonState
+from automaton import Automaton
 from errorprint import printWarning, printError
 from congexf import dumpGexf, changeGexfAttvalue
 from gephistream import GephiStream
@@ -55,28 +51,29 @@ def grsim(aut_list, aut_trans_dict={}, env_states=[{}], num_it=20,
           deterministic_env=True, graph_vis=False, destfile="sim_graph.gexf",
           label_vars=None, delay=2, vis_depth=3):
     """
-    Simulate an execution of the given list of automata and return a sequence
-    of automaton states. If graph_vis is True, simulate the automata live in
-    Gephi.
+    Simulate an execution of the given list of automata and return a
+    sequence of automaton nodes (each as an integer "ID"). If
+    graph_vis is True, simulate the automata live in Gephi.
     
     For the simplest use case, try something like:
-        aut_states_list = grsim([aut], env_states=[{state: var...}])
+        aut_nodes_list = grsim([aut], env_states=[{state: var...}])
     
-    Note that 'aut_states_list' is composed of (autID, autState) tuples,
+    Note that 'aut_nodes_list' is composed of (autID, autNode) tuples,
     'aut' is enclosed in a list, and 'env_states' is a list of state
     dictionaries.
     
     Arguments:
 
-    - `aut_list` -- a list of Automaton objects containing the automata
-        generated from jtlvint.synthesize or jtlv.computeStrategy function.
-    - `aut_trans_dict` -- a dictionary in which the keys correspond to exit states
-        of automata and the values are the entry states of the next automata.
+    - `aut_list` -- a list of Automaton objects containing the
+        automata generated from, e.g., jtlvint.synthesize().
+    - `aut_trans_dict` -- a dictionary in which the keys correspond to
+        exit nodes of automata and the values are the entry states of
+        the next automata.
         Both keys and values are tuples in the following format:
-            (AutomatonID, AutomatonState)
+            (AutomatonID, node)
         where 'AutomatonID' is an integer corresponding to the
-        index of the current automaton and 'AutomatonState'
-        is the current automaton state.
+        index of the current automaton and 'node' is the current
+        automaton node (as an integer "ID").
     - `env_states` -- a list of dictionaries of environment state, specifying
         the sequence of environment states. If the length of this sequence
         is less than `num_it`, then this function will automatically pick
@@ -90,13 +87,13 @@ def grsim(aut_list, aut_trans_dict={}, env_states=[{}], num_it=20,
     - `label_vars` -- for graph visualization, a list of the names of the system
         or environment variables to be encoded as labels.
     - `delay` -- for graph visualization, the time between simulation steps.
-    - `vis_depth` -- for graph visualization, set the number of previous states to
-        continue displaying.
+    - `vis_depth` -- for graph visualization, set the number of
+        previous states to continue displaying.
         
     Return:
-    List of automaton states, corresponding to a sequence of simulated
+    List of automaton nodes, corresponding to a sequence of simulated
     transitions. Each entry will be formatted as follows:
-        (AutomatonID, AutomatonState)
+        (AutomatonID, node)
     as described above under 'aut_trans_dict'.
     """
     if not (isinstance(aut_list, list) and len(aut_list) > 0 and
@@ -176,34 +173,6 @@ def grsim(aut_list, aut_trans_dict={}, env_states=[{}], num_it=20,
 
 
 ###################################################################
-def writeSimStatesToFile(states, file, verbose=0):
-    """
-    Write a simulation trace (sequence of states) to a text file. 
-
-    Arguments:
-
-    - `states` -- a list of tuples of automaton states, formatted as:
-            (AutomatonID, AutomatonState)
-        where 'AutomatonID' is an integer corresponding to the
-        index of the current automaton and 'AutomatonState'
-        is the current automaton state.
-    - `file` -- the string name of the desired destination file.
-    
-    Return:
-    (nothing)
-    """
-    f = open(file, 'w')
-    if (verbose > 0):
-        print 'Writing simulation result to ' + file
-    for state in states:
-        for var in state[1].state.keys():
-            f.write(var + ':')
-            f.write(str(state[1].state[var]) + ', ')
-        f.write('\n')
-    f.close()
-
-
-###################################################################
 def writeStatesToFile(aut_list, destfile, aut_states_list=[], label_vars=None):
     """
     Write the states and transitions from a list of automata to a '.gexf'
@@ -215,10 +184,10 @@ def writeStatesToFile(aut_list, destfile, aut_states_list=[], label_vars=None):
     - `aut_list` -- a list of Automaton objects.
     - `destfile` -- the string name of the desired destination file.
     - `aut_states_list` -- a list of tuples of automaton states, formatted as:
-            (AutomatonID, AutomatonState)
+            (AutomatonID, node)
         where 'AutomatonID' is an integer corresponding to the
-        index of the current automaton and 'AutomatonState'
-        is the current automaton state.
+        index of the current automaton and 'node' is the current
+        automaton node.
     - `label_vars` -- a list of the names of the system or environment
         variables to be encoded as labels.
     
@@ -233,7 +202,7 @@ def writeStatesToFile(aut_list, destfile, aut_states_list=[], label_vars=None):
     # Generate a Gexf-formatted string of automata.
     output = dumpGexf(aut_list, label_vars=label_vars)
     
-    # 'aut_states_list' is a list of automaton/automaton state tuples.
+    # 'aut_states_list' is a list of automaton/node tuples.
     # Transitioning from one tuple to the next should correspond to changing
     # automaton states in the receding horizon case.
     iteration = 1

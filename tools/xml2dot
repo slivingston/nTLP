@@ -27,29 +27,65 @@ be called robotctrl.dot.png
 
 import sys
 from tulip.automaton import Automaton
-from tulip.conxml import readXMLfile
+from tulip.conxml import loadXML
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2 or len(sys.argv) > 4:
-        print "Usage: xml2dot.py [-z] INPUT.xml [OUTPUT.dot]"
+    if "-h" in sys.argv or len(sys.argv) < 2 or len(sys.argv) > 5:
+        print "Usage: xml2dot [-zh] INPUT [OUTPUT]\n"
+        print "  -h        this help message."
+        print "  -z        do not hide names of variables that are false at a node."
+        print "  -c        color nodes according to goal mode."
+        print "  -a        label nodes with attributes (requires -c flag)."
+        print "  INPUT     name of file to read from; if \"-\", then read from stdin."
+        print "  OUTPUT    name of file to write to;"
+        print "            if \"-\" (default if INPUT is -), then write to stdout."
         exit(1)
 
-    # Detect and strip -z flag
+    # Detect and strip flags
     if "-z" in sys.argv:
         hidez_flag = False
         sys.argv.remove("-z")
     else:
         hidez_flag = True
-
-    if len(sys.argv) == 3:
-        destfile = sys.argv[2]
+    if "-c" in sys.argv:
+        colormodes_flag = True
+        sys.argv.remove("-c")
     else:
-        if len(sys.argv[1]) < 4:  # Handle weirdly short names
-            destfile = sys.argv[1] + ".dot"
+        colormodes_flag = False
+    if "-a" in sys.argv:
+        nodeattrib_flag = colormodes_flag
+        sys.argv.remove("-a")
+    else:
+        nodeattrib_flag = False
+
+    if len(sys.argv) == 2 and sys.argv[1] == "-":
+        destfile = "-"
+    else:
+        if len(sys.argv) == 3:
+            destfile = sys.argv[2]
         else:
-            destfile = sys.argv[1][:-4] + ".dot"
+            if len(sys.argv[1]) < 4:  # Handle weirdly short names
+                destfile = sys.argv[1] + ".dot"
+            else:
+                destfile = sys.argv[1][:-4] + ".dot"
     
-    (prob, sys_dyn, aut) = readXMLfile(sys.argv[1])
-    if not aut.writeDotFile(destfile, hideZeros=hidez_flag):
-        print "Failed to create DOT file, " + destfile
-        exit(-1)
+    if sys.argv[1] == "-":
+        (prob, sys_dyn, aut) = loadXML(sys.stdin.read())
+    else:
+        with open(sys.argv[1], "r") as f:
+            (prob, sys_dyn, aut) = loadXML(f.read())
+    if colormodes_flag:
+        dump_method = aut.dumpDOTcolor
+    else:
+        dump_method = aut.dumpDOT
+    if destfile == "-":
+        if nodeattrib_flag:
+            print dump_method(hideZeros=hidez_flag, node_attrib=True)
+        else:
+            print dump_method(hideZeros=hidez_flag)
+    else:
+        with open(destfile, "w") as f:
+            if nodeattrib_flag:
+                f.write(dump_method(hideZeros=hidez_flag, node_attrib=True))
+            else:
+                f.write(dump_method(hideZeros=hidez_flag))

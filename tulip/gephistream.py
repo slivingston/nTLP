@@ -47,8 +47,6 @@ from urllib import urlopen
 from SocketServer import ThreadingMixIn, TCPServer
 from BaseHTTPServer import BaseHTTPRequestHandler
 
-from automaton import AutomatonState
-
 class GraphHandler(BaseHTTPRequestHandler):
     """
     Class for handling HTTP graph requests.

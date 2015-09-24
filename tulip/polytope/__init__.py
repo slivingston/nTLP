@@ -1,4 +1,3 @@
-#
 # This file contains the initialization information from the tulip package.
 #
 # Copyright (c) 2011 by California Institute of Technology
@@ -32,8 +31,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
-# 
-
 """TuLiP Toolbox Polytope module
 
 Main functions are in polytope.py, which are imported automatically.

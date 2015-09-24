@@ -12,16 +12,12 @@ automaton.  Example usage for 3 by 5 size is
 
 The resulting PNG image built by dot is in the file named
 "exampledet.dot.png" or similar.
-
-
-SCL; 28 June 2012.
 """
 
 import sys, time, os, signal
 import tulip.gridworld as gw
 from tulip import gr1cint
-import tulip.nusmvint as nusmvint
-import tulip.spinint as spinint
+from tulip import solver
 import tulip.automaton as automaton
 from tulip import jtlvint
 from subprocess import call
@@ -42,37 +38,6 @@ def alarmhandler(signum, frame):
 def termhandler(signum, frame):
     print "All child processes terminated."
     
-def verify_path(W, path, seq=False):
-    goals = W.goal_list[:]
-    if seq:
-        # Check if path visits all goals in gridworld W in the correct order
-        for p in path:
-            if not goals: break
-            if goals[0] == p:
-                del(goals[0])
-        if goals:
-            return False
-    else:
-        # Check if path visits all goals
-        for g in goals:
-            if not g in path:
-                print "Verification error: path avoids goal", g
-                return False
-    # Ensure that path does not intersect an obstacle
-    for p in path:
-        if not W.isEmpty(p):
-            print "Verification error: path visits obstacle", p
-            return False
-    return True
-    
-def translate_aut(aut, pp):
-    for state in aut.states:
-        # translate cellID -> proposition
-        props = pp.reg2props(state.state["cellID"])
-        if props:
-            for p in props: state.state[p] = True
-            del(state.state["cellID"])
-
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-o", "--output", help="Benchmark output file", 
@@ -117,7 +82,7 @@ if __name__ == "__main__":
                     # World full!
                     print "Could not create world due to insufficient empty space"
                     continue
-                gr1spec = Z.spec()
+                gr1spec = Z.spec(nonbool=False)
                 print Z
                 
                 for solve in range(checks):
@@ -130,21 +95,22 @@ if __name__ == "__main__":
                             signal.alarm(disqual)
                             start = time.time()
                             # generate SMV spec from discrete transitions
-                            pp = Z.discreteTransitionSystem()
+                            pp = Z.discreteTransitionSystem(nonbool=False)
                                 
                             # add progress and init requirements
                             sp = ["[]<>(" + x + ")" for x in gr1spec.sys_prog]
-                            init_spec = " | ".join([Z[x] for x in Z.init_list])
+                            init_spec = " | ".join([Z.__getitem__(x, nonbool=False) for x in Z.init_list])
                             sp.append("(" + init_spec + ")")
-                            nusmvint.generateNuSMVInput({}, ["", " & ".join(sp)],
-                                                            {}, pp, "random_grid.smv")
+                            slvi = solver.generateSolverInput({}, ["", " & ".join(sp)],
+                                                             {}, pp, "random_grid.smv", {},
+                                                             "NuSMV")
                             
                             chcpuoffset = chcputime()
-                            if nusmvint.computeStrategy("random_grid.smv", "random_grid_nusmv.aut"):
-                                aut = automaton.Automaton()
-                                aut.loadSMVAut("random_grid_nusmv.aut")
-                                translate_aut(aut, pp)
-                                assert(verify_path(Z, gw.extractPath(aut)))
+                            if slvi.solve("random_grid.aut"):
+                                aut = slvi.automaton()
+                                solver.restore_propositions(aut, pp)
+                                aut.stripNames()
+                                assert(gw.verify_path(Z, gw.extract_path(aut)))
                                 nstates = len(aut)
                                 rlz += 1
                             else:
@@ -168,15 +134,16 @@ if __name__ == "__main__":
                             start = time.time()
                             
                             sp = ["[]<>(" + x + ")" for x in gr1spec.sys_prog]
-                            initials = { k : True for k in [Z[x] for x in Z.init_list]}
-                            spinint.generateSPINInput({}, ["", " & ".join(sp)],
-                                                            {}, pp, "random_grid.pml", initials)
+                            initials = { k : True for k in [Z.__getitem__(x, nonbool=False) for x in Z.init_list]}
+                            slvi = solver.generateSolverInput({}, ["", " & ".join(sp)],
+                                                            {}, pp, "random_grid.pml", initials,
+                                                            "SPIN")
                             chcpuoffset = chcputime()
-                            if spinint.computeStrategy("random_grid.pml", "random_grid_spin.aut"):
-                                aut = automaton.Automaton()
-                                aut.loadSPINAut("random_grid_spin.aut")
-                                translate_aut(aut, pp)
-                                assert(verify_path(Z, gw.extractPath(aut)))
+                            if slvi.solve("random_grid.aut"):
+                                aut = slvi.automaton()
+                                solver.restore_propositions(aut, pp)
+                                aut.stripNames()
+                                assert(gw.verify_path(Z, gw.extract_path(aut)))
                                 nstates = len(aut)
                                 rlz += 1
                             else:
@@ -203,7 +170,7 @@ if __name__ == "__main__":
                             ctime = chcputime() - chcpuoffset
                             
                             if aut:
-                                assert(verify_path(Z, gw.extractPath(aut)))
+                                assert(gw.verify_path(Z, gw.extract_path(aut)))
                                 rlz += 1
                                 nstates = len(aut)
                             else:
@@ -236,7 +203,7 @@ if __name__ == "__main__":
                                     spc_file="random_grid_jtlv.spc", aut_file="random_grid_jtlv.aut",
                                     file_exist_option="r"):
                                 aut = automaton.Automaton("random_grid_jtlv.aut")
-                                assert(verify_path(Z, gw.extractPath(aut)))
+                                assert(gw.verify_path(Z, gw.extract_path(aut)))
                                 nstates = len(aut)
                                 rlz += 1
                             else:

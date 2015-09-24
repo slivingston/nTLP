@@ -8,19 +8,19 @@ Flags: -v  verbose;
        -p  generate figure using functions in polytope.plot module.
 
 
-SCL; 1 Apr 2012.
+SCL; 6 June 2012.
 """
 
 import numpy as np
 import sys
 from StringIO import StringIO
 
-from tulip import conxml, discretize, prop2part, polytope as pc
+from tulip import conxml, discretize
 import tulip.polytope.plot as pplot
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or len(sys.argv) > 5:
-        print "Usage: %s input.yaml [-p] [-v] [output.xml]" % sys.argv[0]
+        print "Usage: autopart.py input.yaml [-p] [-v] [output.xml]"
         exit(1)
 
     if "-p" in sys.argv:
@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
     (sys_dyn, initial_partition, N) = conxml.readYAMLfile(sys.argv[1], verbose=verbose)
     disc_dynamics = discretize.discretize(initial_partition, sys_dyn, N=N,
-                                          use_mpt=False, verbose=verbose)
+                                          verbose=verbose)
 
     with open(out_fname, "w") as f:
         f.write(conxml.dumpXMLtrans(sys_dyn, disc_dynamics, N,

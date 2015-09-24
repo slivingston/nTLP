@@ -96,12 +96,12 @@ if __name__ == "__main__":
                          destfile=destfile)
 
     # Dump state sequence.
-    print "\n".join([str(state.state) for (autID, state) in states]) + "\n"
+    print "\n".join([str(aut.node[n]["state"]) for (autID, n) in states]) + "\n"
 
     # Store discrete trajectory in np array
     cellid_arr = []
-    for (autID, state) in states:
-        occupied_cells = [int(k[len("cellID_"):]) for (k,v) in state.state.items() if v==1 and k.startswith("cellID")]
+    for (autID, n) in states:
+        occupied_cells = [int(k[len("cellID_"):]) for (k,v) in aut.node[n]["state"].items() if v==1 and k.startswith("cellID")]
         if len(occupied_cells) > 1:
             print "ERROR: more than one cell occupied by continuous state."
             exit(-1)

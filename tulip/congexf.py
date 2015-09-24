@@ -1,6 +1,4 @@
-#! /usr/bin/env python
-#
-# Copyright (c) 2011 by California Institute of Technology
+# Copyright (c) 2011, 2012 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,17 +29,14 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
-#
-# $Id$
 """
 Several functions that help in converting an AUT file (from JTLV)
 to a GEXF file (in Gephi).
-
 """
 
 import re
 
-from automaton import AutomatonState, Automaton
+from automaton import Automaton
 
 activeID = 'is_active'
 
@@ -104,7 +99,7 @@ def tagGexfAttvalue(var_name, var_val, idt_lvl):
     return attvalue
     
     
-def tagGexfNode(p_id, state, label, idt_lvl):
+def tagGexfNode(p_id, node, node_data, label, idt_lvl):
     """
     Encode the state specified in a gexf-readable node string.
     The variables in the specified state are stored as
@@ -112,7 +107,8 @@ def tagGexfNode(p_id, state, label, idt_lvl):
 
     Arguments:
     p_id -- the ID of this node's parent Automaton.
-    state -- the AutomatonState object to be encoded.
+    node -- node (as an integer "ID") from an Automaton.
+    node_data -- node annotation; in particular, see "state" key.
     label -- a string name for the node.
     idt_lvl -- level of indentation of the final string.
 
@@ -120,90 +116,91 @@ def tagGexfNode(p_id, state, label, idt_lvl):
     String representing a gexf node.
     """
     
-    if not (isinstance(state, AutomatonState) and
-            isinstance(label, str) and
+    if not (isinstance(label, str) and
             isinstance(p_id, int) and isinstance(idt_lvl, int)):
         raise TypeError("Invalid arguments to tagGexfNode")
     
-    state_ID = str(p_id) + '.' + str(state.id)
+    state_ID = str(p_id) + '.' + str(node)
     
     nl = "\n"  # newline
     idt = "  "  # indentation
 
     # Generate a line of XML for the node.
-    node = idt * idt_lvl + '<node id="' + state_ID + \
-           '" label="' + label + '" pid="' + str(p_id) + '">' + nl
+    xml_node = idt * idt_lvl + '<node id="' + state_ID + \
+        '" label="' + label + '" pid="' + str(p_id) + '">' + nl
     idt_lvl += 1
-    node += idt * idt_lvl + '<attvalues>' + nl
+    xml_node += idt * idt_lvl + '<attvalues>' + nl
 
     # Iterate through attributes.
     idt_lvl += 1
-    attr_dict = state.state.copy()
+    attr_dict = node_data["state"].copy()
     # activeID holds the name of an attribute used to simulate the automaton.
     # It changes from 0 when the automaton is currently at that node.
     attr_dict[activeID] = 0
     for (k, v) in attr_dict.items():
-        node += tagGexfAttvalue(k, v, idt_lvl)
+        xml_node += tagGexfAttvalue(k, v, idt_lvl)
     idt_lvl -= 1
 
-    # Close attributes and node.
-    node += idt * idt_lvl + '</attvalues>' + nl
+    # Close attributes and node tag.
+    xml_node += idt * idt_lvl + '</attvalues>' + nl
     idt_lvl -= 1
-    node += idt * idt_lvl + '</node>' + nl
+    xml_node += idt * idt_lvl + '</node>' + nl
     
-    return node
+    return xml_node
 
 
-def tagGexfTaggedNode(p_id, state, label, idt_lvl):
+def tagGexfTaggedNode(p_id, node, node_data, label, idt_lvl):
     """forked tagGexfNode function to support coloring, etc.
 
     interface is almost identical to that of tagGexfNode. The key
     difference is ability to recognize and process the ``tags''
-    attribute in the given node ``state''.
+    attribute in the given ``node_data''.
 
     See documentation in tagGexfNode for basic behavior.
     """
     
-    if not (isinstance(state, AutomatonState) and
-            isinstance(label, str) and
+    if not (isinstance(label, str) and
             isinstance(p_id, int) and isinstance(idt_lvl, int)):
         raise TypeError("Invalid arguments to tagGexfNode")
     
     state_ID = str(p_id) + '.' + str(state.id)
-    tags = getattr(state, "tags", {})
-    if tags is None:
+    if "tags" in node_data:
+        tags = node_data["tags"].copy()
+    else:
         tags = {}
     
     nl = "\n"  # newline
     idt = "  "  # indentation
 
     # Generate a line of XML for the node.
-    node = idt * idt_lvl + '<node id="' + state_ID + \
-           '" label="' + label + '" pid="' + str(p_id) + '">' + nl
+    xml_node = idt * idt_lvl + '<node id="' + state_ID + \
+        '" label="' + label + '" pid="' + str(p_id) + '">' + nl
     idt_lvl += 1
     if tags.has_key("color"):
-        node += idt * idt_lvl + '<viz:color r="'+str(tags["color"][0])+'" g="'+str(tags["color"][1])+'" b="'+str(tags["color"][2])+'" a="'+str(tags["color"][3])+'" />' + nl
-    node += idt * idt_lvl + '<attvalues>' + nl
+        xml_node += idt * idt_lvl + '<viz:color r="'+str(tags["color"][0])+'" g="'+str(tags["color"][1])+'" b="'+str(tags["color"][2])+'" a="'+str(tags["color"][3])+'" />' + nl
+    xml_node += idt * idt_lvl + '<attvalues>' + nl
 
     # Iterate through attributes.
     idt_lvl += 1
-    attr_dict = state.state.copy()
+    attr_dict = node_data["state"].copy()
     # activeID holds the name of an attribute used to simulate the automaton.
     # It changes from 0 when the automaton is currently at that node.
     attr_dict[activeID] = 0
     for (k, v) in attr_dict.items():
-        node += tagGexfAttvalue(k, v, idt_lvl)
+        xml_node += tagGexfAttvalue(k, v, idt_lvl)
     idt_lvl -= 1
 
     # Close attributes and node.
-    node += idt * idt_lvl + '</attvalues>' + nl
+    xml_node += idt * idt_lvl + '</attvalues>' + nl
     idt_lvl -= 1
-    node += idt * idt_lvl + '</node>' + nl
+    xml_node += idt * idt_lvl + '</node>' + nl
     
-    return node
+    return xml_node
         
     
-def tagGexfEdge(sourcep_id, source, targetp_id, target, label, idt_lvl):
+def tagGexfEdge(sourcep_id, source, source_data,
+                targetp_id, target, target_data,
+                label, idt_lvl):
     """
     Encode the transition specified in a gexf-readable edge string.
     The variables in the target's state are stored as
@@ -211,9 +208,11 @@ def tagGexfEdge(sourcep_id, source, targetp_id, target, label, idt_lvl):
 
     Arguments:
     sourcep_id -- the ID of the source's parent Automaton.
-    source -- the AutomatonState for the 'tail' of the edge.
+    source -- node (as an integer "ID") for the 'tail' of the edge.
+    source_data -- node annotation; in particular, see "state" key.
     targetp_id -- the ID of the target's parent Automaton.
-    target -- the AutomatonState for the 'head' of the edge.
+    target -- node (as an integer "ID") for the 'head' of the edge.
+    target_data -- node annotation; in particular, see "state" key.
     label -- a string name for the edge.
     idt_lvl -- level of indentation of the final string.
 
@@ -221,15 +220,13 @@ def tagGexfEdge(sourcep_id, source, targetp_id, target, label, idt_lvl):
     String representing a gexf edge.
     """
     
-    if not (isinstance(source, AutomatonState) and
-            isinstance(target, AutomatonState) and
-            isinstance(label, str) and
+    if not (isinstance(label, str) and
             isinstance(sourcep_id, int) and isinstance(targetp_id, int) and
             isinstance(idt_lvl, int)):
         raise TypeError("Invalid arguments to tagGexfEdge")
     
-    source_ID = str(sourcep_id) + '.' + str(source.id)
-    target_ID = str(targetp_id) + '.' + str(target.id)
+    source_ID = str(sourcep_id) + '.' + str(source)
+    target_ID = str(targetp_id) + '.' + str(target)
     edge_ID = source_ID + '-' + target_ID
     
     nl = "\n"  # newline
@@ -245,7 +242,7 @@ def tagGexfEdge(sourcep_id, source, targetp_id, target, label, idt_lvl):
 
     # Iterate through attributes.
     idt_lvl += 1
-    attr_dict = target.state.copy()
+    attr_dict = target_data["state"].copy()
     # activeID holds the name of an attribute used to simulate the automaton.
     # It changes from 0 when the automaton is currently at that node.
     attr_dict[activeID] = 0
@@ -295,8 +292,8 @@ def dumpGexf(aut_list, label_vars=None, use_viz=False, use_clusters=False):
         raise TypeError("Invalid arguments to dumpGexf.")
     attr_dict = {}
     for aut in aut_list:
-        for state in aut.states:
-            for (k, v) in state.state.items():
+        for (node, data) in aut.nodes_iter(data=True):
+            for (k, v) in data["state"].items():
                 if k not in attr_dict.keys():
                     attr_dict[k] = type(v)
     # If no 'label_vars' were passed, use all attributes as labels
@@ -360,21 +357,24 @@ def dumpGexf(aut_list, label_vars=None, use_viz=False, use_clusters=False):
                       '" />' + nl
 
             # Build gexf nodes from AutomatonState states.
-            for state in aut.states:
-                label = filter(lambda x: x in state.state.keys(), label_vars)
-                label = str(map(lambda x: state.state[x], label))
+            for (node, data) in aut.nodes_iter(data=True):
+                label = filter(lambda x: x in data["state"].keys(), label_vars)
+                label = str(map(lambda x: data["state"][x], label))
                 if use_viz:
-                    output += tagGexfTaggedNode(aut_id, state, label, idt_lvl)
+                    output += tagGexfTaggedNode(aut_id, node, data.copy(), label, idt_lvl)
                 else:
-                    output += tagGexfNode(aut_id, state, label, idt_lvl)
+                    output += tagGexfNode(aut_id, node, data.copy(), label, idt_lvl)
 
             aut_id += 1
     else:
         # Hierarchy (clustering) based on ``tags'' attribute
         cluster_ids = []
         for aut in aut_list:
-            for node in aut.states:
-                tags = getattr(node, "tags", {})
+            for (node, data) in aut.nodes_iter(data=True):
+                if "tags" in data:
+                    tags = data["tags"].copy()
+                else:
+                    tags = {}
                 if (tags is not None) and tags.has_key("cluster_id"):
                     if tags["cluster_id"] not in cluster_ids:
                         cluster_ids.append(tags["cluster_id"])
@@ -388,18 +388,21 @@ def dumpGexf(aut_list, label_vars=None, use_viz=False, use_clusters=False):
                 ': ' + str(label_vars) + \
                 '" />' + nl
         for aut in aut_list:
-            for node in aut.states:
-                tags = getattr(node, "tags", {})
+            for (node, data) in aut.nodes_iter(data=True):
+                if "tags" in data:
+                    tags = data["tags"].copy()
+                else:
+                    tags = {}
                 if (tags is not None) and tags.has_key("cluster_id"):
                     cluster_id = tags["cluster_id"]
                 else:
                     cluster_id = null_cluster_id
-                label = filter(lambda x: x in node.state.keys(), label_vars)
-                label = str(map(lambda x: node.state[x], label))
+                label = filter(lambda x: x in data["state"].keys(), label_vars)
+                label = str(map(lambda x: data["state"][x], label))
                 if use_viz:
-                    output += tagGexfTaggedNode(cluster_id, node, label, idt_lvl)
+                    output += tagGexfTaggedNode(cluster_id, node, node_data, label, idt_lvl)
                 else:
-                    output += tagGexfNode(cluster_id, node, label, idt_lvl)
+                    output += tagGexfNode(cluster_id, node, node_data, label, idt_lvl)
     idt_lvl -= 1
     
     # Close nodes tag and open edges tag.
@@ -411,17 +414,11 @@ def dumpGexf(aut_list, label_vars=None, use_viz=False, use_clusters=False):
     if not use_clusters:
         aut_id = 0
         for aut in aut_list:
-            for state in aut.states:
-                for trans in state.transition:
-                    # Locate target node.
-                    for aut_state in aut.states:
-                        if trans == aut_state.id:
-                            target = aut_state
-                            # target has been found, leave for loop.
-                            break
-                    label = filter(lambda x: x in target.state.keys(), label_vars)
-                    label = str(map(lambda x: target.state[x], label))
-                    output += tagGexfEdge(aut_id, state, aut_id, target,
+            for (node, data) in aut.nodes_iter(data=True):
+                for e in aut.out_edges_iter(node):
+                    label = filter(lambda x: x in aut.node[e[1]]["state"].keys(), label_vars)
+                    label = str(map(lambda x: aut.node[e[1]]["state"][x], label))
+                    output += tagGexfEdge(aut_id, node, data.copy(), aut_id, e[1], aut.node[e[1]].copy(),
                                           label, idt_lvl)
             if aut_id > 0:
                 # Build edges between automata.
@@ -434,27 +431,28 @@ def dumpGexf(aut_list, label_vars=None, use_viz=False, use_clusters=False):
             aut_id += 1
     else:
         for aut in aut_list:
-            for node in aut.states:
-                tags = getattr(node, "tags", {})
+            for (node, data) in aut.nodes_iter(data=True):
+                if "tags" in data:
+                    tags = data["tags"].copy()
+                else:
+                    tags = {}
                 if (tags is not None) and tags.has_key("cluster_id"):
                     cluster_id = tags["cluster_id"]
                 else:
                     cluster_id = null_cluster_id
-                for trans in node.transition:
-                    # Locate target node.
-                    for next_node in aut.states:
-                        if trans == next_node.id:
-                            target = next_node
-                            break
-                    next_tags = getattr(target, "tags", {})
+                for e in aut.out_edges_iter(node):
+                    if "tags" in aut.node[e[1]]:
+                        next_tags = aut.node[e[1]]["tags"].copy()
+                    else:
+                        next_tags = {}
                     if (next_tags is not None) and next_tags.has_key("cluster_id"):
                         next_cluster_id = next_tags["cluster_id"]
                     else:
                         next_cluster_id = null_cluster_id
-                    label = filter(lambda x: x in target.state.keys(), label_vars)
-                    label = str(map(lambda x: target.state[x], label))
-                    output += tagGexfEdge(cluster_id, node,
-                                          next_cluster_id, target,
+                    label = filter(lambda x: x in aut.node[e[1]]["state"].keys(), label_vars)
+                    label = str(map(lambda x: aut.node[e[1]]["state"][x], label))
+                    output += tagGexfEdge(cluster_id, node, data.copy(),
+                                          next_cluster_id, e[1], aut.node[e[1]].copy(),
                                           label, idt_lvl)
     idt_lvl -= 1
 

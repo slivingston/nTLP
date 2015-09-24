@@ -29,8 +29,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
-# 
-# $Id$
 """ 
 Proposition preserving partition module.
 """
@@ -247,3 +245,39 @@ class PropPreservingPartition:
         elif hasattr(self.adj, "shape"):
             output +="Adjacency matrix:\n"+str(self.adj)+"\n"
         return output
+
+    def __copy__(self):
+        return self.copy()
+
+    def copy(self):
+        # This is quite obnoxious but needed for backwards compatibility
+        if self.domain is None:
+            domain = None
+        else:
+            domain = self.domain.copy()
+        if self.adj is 0:
+            adj = 0
+        else:
+            adj = self.adj.copy()
+        if self.trans == 0:
+            trans = 0
+        else:
+            trans = self.trans.copy()
+        if self.list_prop_symbol is None:
+            list_prop_symbol = None
+        else:
+            list_prop_symbol = copy.copy(self.list_prop_symbol)
+        if self.orig_list_region is None:
+            orig_list_region = None
+        else:
+            orig_list_region = [r.copy() for r in self.orig_list_region]
+        if self.orig is None:
+            orig = None
+        else:
+            orig = copy.copy(self.orig)
+
+        return PropPreservingPartition(domain=domain, num_prop=self.num_prop,
+                                       list_region=[r.copy() for r in self.list_region],
+                                       adj=adj, trans=trans,
+                                       list_prop_symbol=list_prop_symbol,
+                                       orig_list_region=orig_list_region, orig=orig)

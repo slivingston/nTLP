@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
-# TuLiP documentation build configuration file, created by
-# sphinx-quickstart on Sun May  8 12:06:07 2011.
+# Based on the TuLiP documentation build configuration file, which was
+# created by sphinx-quickstart on Sun May 8 12:06:07 2011.
 #
 # This file is execfile()d with the current directory set to its containing dir.
 #
@@ -31,7 +31,7 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.pngmath', 'sphinx.ext.viewcode']
 templates_path = ['_templates']
 
 # The suffix of source filenames.
-source_suffix = '.txt'
+source_suffix = '.rst'
 
 # The encoding of source files.
 #source_encoding = 'utf-8-sig'
@@ -40,8 +40,8 @@ source_suffix = '.txt'
 master_doc = 'index'
 
 # General information about the project.
-project = u'TuLiP'
-copyright = u'2010-2012, California Institute of Technology'
+project = u'nTLP'
+copyright = u'2010-2014, California Institute of Technology'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -95,9 +95,8 @@ pygments_style = 'sphinx'
 html_theme = 'default'
 
 # Theme options are theme-specific and customize the look and feel of a theme
-# further.  For a list of options available for each theme, see the
-# documentation.
-#html_theme_options = {}
+# further.  For a list of options available for each theme, see the documentation.
+html_theme_options = {"collapsiblesidebar":True}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
@@ -142,7 +141,7 @@ html_last_updated_fmt = '%d %B %Y'
 #html_domain_indices = True
 
 # If false, no index is generated.
-#html_use_index = True
+html_use_index = False
 
 # If true, the index is split into individual pages for each letter.
 #html_split_index = False
@@ -173,8 +172,8 @@ htmlhelp_basename = 'TuLiPdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'TuLiP.tex', u'TuLiP Documentation',
-   u'Richard Murray, Necmiye Ozay, Ufuk Topcu, Nok Wongpiromsarn, Mumu Xu', 'manual'),
+  ('index', 'TuLiP.tex', u'nTLP Documentation',
+   u'California Institute of Technology', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -206,6 +205,6 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'tulip', u'TuLiP Documentation',
-     [u'Richard Murray, Necmiye Ozay, Ufuk Topcu, Nok Wongpiromsarn, Mumu Xu'], 1)
+    ('index', 'tulip', u'nTLP Documentation',
+     [u'California Institute of Technology'], 1)
 ]

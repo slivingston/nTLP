@@ -2,12 +2,44 @@
 """
 Test TuLiP code for working with polytopes.
 
-SCL; 18 Dec 2011.
+SCL; 17 January 2013.
 (partially based on tests by Petter Nilsson, summer 2011.)
 """
 
 from tulip.polytope import *
 import numpy as np
+
+
+TOL = 1e-10  # Numerical tolerance
+
+def Region_copy_test():
+    # Test copy method of Region class (previous one had a bug of not
+    # copying the component Polytopes).
+    A = np.array([[1, 0],
+                  [-1, 0],
+                  [0, 1],
+                  [0, -1]], dtype=np.float64)
+    b = np.array([1, 0, 1, 0], dtype=np.float64)
+    r = Region(list_poly=[Polytope(A, b) for i in range(3)])
+    s = r.copy()
+    assert r is not s
+    assert len(r.list_poly) == len(s.list_poly)
+    assert np.all([r.list_poly[i].A.shape == s.list_poly[i].A.shape for i in range(len(r.list_poly))]) and np.all([r.list_poly[i].b.shape == s.list_poly[i].b.shape for i in range(len(r.list_poly))])
+    assert np.all([np.all(r.list_poly[i].A == s.list_poly[i].A) for i in range(len(r.list_poly))]) and np.all([np.all(r.list_poly[i].b == s.list_poly[i].b) for i in range(len(r.list_poly))])
+    assert np.all([r.list_poly[i] is not s.list_poly[i] for i in range(len(r.list_poly))])
+
+def Polytope_copy_test():
+    # Test copy method of Polytope class
+    A = np.array([[1, 0],
+                  [-1, 0],
+                  [0, 1],
+                  [0, -1]], dtype=np.float64)
+    b = np.array([1, 0, 1, 0], dtype=np.float64)
+    P = Polytope(A, b)
+    Q = P.copy()
+    assert P is not Q
+    assert (P.A.shape == Q.A.shape) and (P.b.shape == Q.b.shape)
+    assert np.all(P.A == Q.A) and np.all(P.b == Q.b)
 
 
 class projection_test:
@@ -81,6 +113,8 @@ class projection_test:
         test1 = mldivide(Pred,self.Pred3)
         test2 = mldivide(self.Pred3,Pred)
         assert (not is_fulldim(test1)) and (not is_fulldim(test2))
+
+    test_poly3.slow = True
         
 class union_test:
 
@@ -252,3 +286,17 @@ def normalized_polytope_projection_test():
             cheby_ball(P)
             cheby_ball(P_normalized)
             assert abs(P.chebR-P_normalized.chebR) < abs_tol
+
+def initial_quickhull_simplex_test():
+    # Demonstrate special case for polytopes with a vertex at
+    # (1,1,...,1) (in R^d) after centering.  This demonstrates a bug
+    # in previous TuLiP releases.
+    V = np.array([[0,0],
+                  [3,0],
+                  [0,3],
+                  [3,3]], dtype=np.float64)
+    np.random.seed(1)
+    # If special case is not handled properly, then the NumPy linear
+    # system solver invoked during Facet instantiation should raise a
+    # LinAlgError exception
+    assert np.abs(volume(qhull(V)) - 9.) < TOL

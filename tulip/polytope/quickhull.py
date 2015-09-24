@@ -1,5 +1,4 @@
-#
-# Copyright (c) 2011 by California Institute of Technology
+# Copyright (c) 2011, 2013 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -38,7 +37,6 @@
 #  The quickhull algorithm for convex hulls,
 #  ACM Transactions on Mathematical Software,
 #  Volume 22 Issue 4, Dec. 1996,
-
 """
 Implementation of the Quickhull algorithm for computing convex hulls.
 
@@ -60,21 +58,19 @@ class Facet:
     - `normal`: a normalized vector perpendicular to the facet, pointing "out"
     - `distance`: the normal distance of the facet from origo
     """
-    
-    
     def __init__(self,points):
-        
         self.outside = []
         self.vertices = points
         self.neighbors = []
         self.normal = None
         self.distance = None
-        
+
         sh = np.shape(points)
         A0 = np.hstack([points,np.ones([sh[0],1])])
         b0 = np.zeros([sh[0],1])
         b = np.vstack([np.zeros([sh[0],1]),1])
-        c = np.ones(sh[1]+1)
+        c = np.zeros(sh[1]+1)
+        c[-1] = -1.
         A = np.vstack([A0,c])
         sol = np.linalg.solve(A,b)
 
@@ -87,7 +83,7 @@ class Facet:
         if np.sum(n.flatten()*points[0]) < 0:
             n = -n
         self.normal = n
-        self.distance = np.abs(d)
+        self.distance = -d
     
     def get_furthest(self):
     	"""Returns the point in outside the furthest away from the facet"""
@@ -147,7 +143,6 @@ def quickhull(POINTS, abs_tol=1e-7):
                       A x <= b (H-representation). `vertices is a list of all 
                       the points in the convex hull (V-representation).
     """
-    
     POINTS = POINTS.astype('float')
     sh = np.shape(POINTS)
     dim = sh[1]

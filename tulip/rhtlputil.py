@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-#
-# Copyright (c) 2011 by California Institute of Technology
+# Copyright (c) 2011, 2013 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,23 +29,17 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
-# 
-# $Id$
-
 """ 
--------------------------------------
 Rhtlputil Module --- Helper Functions
--------------------------------------
 
-Nok Wongpiromsarn (nok@cds.caltech.edu)
-
-:Date: August 25, 2010
-:Version: 0.1.0
+Originally by Nok Wongpiromsarn (nok@cds.caltech.edu), August 25, 2010.
 """
 
 import re, copy, os
 from itertools import product
 from errorprint import printError, printWarning
+
+CVC4_BIN_PREFIX=""
 
 def evalExpr(expr='', vardict={}, verbose=0):
     vardict = copy.deepcopy(vardict)
@@ -574,3 +566,59 @@ def findPath(graph, root, goal, verbose=0):
                     print 'to_visit_path = ', to_visit_path
 
     return []
+
+
+def cvc4_qf_lia(expr='', allvars={}, verbose=0):
+    """
+
+    Use the QF_LIA logic, as defined in SMT-LIB (see http://smtlib.org),
+    and the solver CVC4 (see http://cvc4.cs.nyu.edu/).
+
+    This function is intended to be a drop-in replacement for
+    yicesSolveSat(), more or less.
+    """
+    # The script is constructed as a list in which each entry is a line.
+    smtlib_script = list()
+    smtlib_script.extend(["(set-option :print-success false)",
+                          "(set-option :produce-models true)"])
+    smtlib_script.append("(set-logic QF_LIA)")
+    nonbools = list()
+    for var, vartype in allvars.items():
+        if vartype == "boolean":
+            smtlib_script.append("(declare-fun "+str(var)+" () Bool)")
+        else:
+            smtlib_script.append("(declare-fun "+str(var)+" () Int)")
+            nonbools.append((var, vartype))
+    for (var, domain) in nonbools:
+        if isinstance(domain, list):
+            domain_formula = "|".join(["("+str(var)+"=("+str(d)+"))" for d in domain])
+        elif isinstance(domain, str):
+            # String-defined domains are supported for backwards compatibility.
+            opening = domain.find("{")
+            closing = domain.find("}")
+            if opening < 0 or closing < opening:
+                raise ValueError("Invalid domain string: \""+domain+"\"")
+            domain_formula = "|".join(["("+str(var)+"=("+str(int(d))+"))" for d in domain[(opening+1):closing].split(",")])
+        else:
+            raise ValueError("Unrecognized container for variable domain definition.")
+        smtlib_script.append("(assert "+expr2ysstr(domain_formula)+")")
+        # Clean up any unary minuses in output of expr2ysstr()
+        smtlib_script[-1] = re.sub(r"-([0-9]+)", r"(- \1)", smtlib_script[-1])
+
+    # Make the actual assertion to be checked
+    smtlib_script.append("(assert "+expr2ysstr(expr)+")")
+    smtlib_script[-1] = re.sub(r"-([0-9]+)", r"(- \1)", smtlib_script[-1])
+    smtlib_script.extend(["(check-sat)",
+                          "(get-value ("+" ".join([str(var) for var in allvars.keys()])+"))",
+                          "(exit)"])
+
+    import subprocess
+    p = subprocess.Popen([CVC4_BIN_PREFIX+"cvc4", "--lang=smtlib2", "-"],
+                         stdin=subprocess.PIPE,
+                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    (stdoutdata, stderrdata) = p.communicate("\n".join(smtlib_script))
+    result = stdoutdata.split("\n")
+    if result[0] == "sat":
+        return True, result[1]  # Return witness model
+    elif result[0] == "unsat":
+        return False, None

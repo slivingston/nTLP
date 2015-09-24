@@ -9,8 +9,9 @@ the gr1c synthesis tool, rather than the historic default of JTLV.
 Toggle the truth value of load_from_XML to indicate whether to
 generate a new tulipcon XML file, or read from one.
 
-SCL; 27 Mar 2012.
+SCL; 25 April 2013.
 """
+from os import environ as os_environ
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -20,6 +21,11 @@ from tulip import gr1cint
 from tulip.spec import GRSpec
 import tulip.polytope as pc
 from tulip.polytope.plot import plot_partition
+
+if os_environ.has_key("TULIP_REGRESS"):
+    regression_mode = True
+else:
+    regression_mode = False
 
 
 # Problem parameters
@@ -106,22 +112,24 @@ else:
     (disc_dynamics, sys_dyn, aut) = conxml.readXMLfile("rsimple_example.xml")
 
 # Simulate
+if regression_mode:
+    np.random.seed(0)
 num_it = 10
 init_state = {'X0reach': True}
 
 graph_vis = raw_input("Do you want to open in Gephi? (y/n)") == 'y'
 destfile = 'rsdisturbance_example.gexf'
 states = grsim.grsim([aut], env_states=[init_state], num_it=num_it,
-                     deterministic_env=False, graph_vis=graph_vis,
+                     deterministic_env=regression_mode, graph_vis=graph_vis,
                      destfile=destfile)
 
 # Dump state sequence.
-print "\n".join([str(state.state) for (autID, state) in states]) + "\n"
+print "\n".join([str(aut.node[n]["state"]) for (autID, n) in states]) + "\n"
 
 # Store discrete trajectory in np array
 cellid_arr = []
-for (autID, state) in states:
-    occupied_cells = [int(k[len("cellID_"):]) for (k,v) in state.state.items() if v==1 and k.startswith("cellID")]
+for (autID, n) in states:
+    occupied_cells = [int(k[len("cellID_"):]) for (k,v) in aut.node[n]["state"].items() if v==1 and k.startswith("cellID")]
     if len(occupied_cells) > 1:
         print "ERROR: more than one cell occupied by continuous state."
         exit(-1)
@@ -156,19 +164,19 @@ for i in range(x_arr.shape[0]-1):
 print "Final state x: " + str(x_arr[-1,:])
         
 # Plot state trajectory
-ax = plot_partition(disc_dynamics, show=False)
-arr_size = 0.05
-for i in range(1,x_arr.shape[0]):
-    x = x_arr[i-1,0]
-    y = x_arr[i-1,1]
-    dx = x_arr[i,0] - x
-    dy = x_arr[i,1] - y
-    arr = matplotlib.patches.Arrow(float(x),float(y),float(dx),float(dy),width=arr_size)
-    ax.add_patch(arr)
-spec_ind = range(0, x_arr.shape[0], N)
+if not regression_mode:
+    ax = plot_partition(disc_dynamics, show=False)
+    arr_size = 0.05
+    for i in range(1,x_arr.shape[0]):
+        x = x_arr[i-1,0]
+        y = x_arr[i-1,1]
+        dx = x_arr[i,0] - x
+        dy = x_arr[i,1] - y
+        arr = matplotlib.patches.Arrow(float(x),float(y),float(dx),float(dy),width=arr_size)
+        ax.add_patch(arr)
+    spec_ind = range(0, x_arr.shape[0], N)
 
-ax.plot(x_arr[spec_ind,0], x_arr[spec_ind,1], 'oy')
-ax.plot(x_arr[0,0], x_arr[0,1], 'og')
-ax.plot(x_arr[-1,0], x_arr[-1,1], 'or')
-
-plt.show()
+    ax.plot(x_arr[spec_ind,0], x_arr[spec_ind,1], 'oy')
+    ax.plot(x_arr[0,0], x_arr[0,1], 'og')
+    ax.plot(x_arr[-1,0], x_arr[-1,1], 'or')
+    plt.show()

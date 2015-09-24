@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 """
 Tests for solver.py
+
+15 January 2013.
 """
 
 from tulip.solver import SolverInput
 import tulip.gridworld as gw
 import benchmark.benchmark_tools as bm
 import nose.tools as nt
+import os
 
 REFERENCE_GWFILE = """
 # A very small example, realizable by itself.
@@ -43,6 +46,17 @@ def varNames_test():
         nt.eq_(s, svi.canonical(svi.varName(s)))
         svi.setSolver("SPIN")
         nt.eq_(s, svi.canonical(svi.varName(s)))
+
+def cleanup_benchmark_data():
+    os.remove("gw_solve.aut")
+    os.remove("gw_solve.mdl")
+    try:
+        os.remove("gw_solve.mdl.trail")
+    except OSError:
+        pass  # It is OK if this file is not present.
+    for pfilename in os.listdir("pan"):
+        os.remove(os.path.join("pan", pfilename))
+    os.rmdir("pan")
         
 def gridworld_single_actor_test():
     Z = gw.random_world(size=(10,10), num_goals=2)
@@ -54,6 +68,9 @@ def gridworld_single_actor_test():
                 assert(gw.verify_path(Z, p))
         rlz[solv] = (paths is not None)
     assert(all(rlz.values()) or not any(rlz.values()))
+    cleanup_benchmark_data()
+
+gridworld_single_actor_test.slow = True
     
 def gridworld_multi_actor_test():
     Z = gw.random_world(size=(8,8), num_goals=1)
@@ -66,6 +83,9 @@ def gridworld_multi_actor_test():
             assert(gw.verify_mutex(paths))
         rlz[solv] = (paths is not None)
     assert(all(rlz.values()) or not any(rlz.values()))
+    cleanup_benchmark_data()
+
+gridworld_multi_actor_test.slow = True
     
 def gridworld_realizability_test():
     Z = gw.GridWorld(REFERENCE_GWFILE, prefix="Y")
@@ -75,6 +95,7 @@ def gridworld_realizability_test():
             for p in paths:
                 assert(gw.verify_path(Z, p))
         assert paths is not None
+    cleanup_benchmark_data()
         
 if __name__ == "__main__":
     varNames_test()

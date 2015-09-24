@@ -6,8 +6,9 @@ This is an almost verbatim copy of the robot_simple_disturbance.py
 code by Petter Nilsson and Nok Wongpiromsarn.  It demonstrates
 elementary use of a live gr1c session.
 
-SCL; 27 Mar 2012.
+SCL; 25 April 2013.
 """
+from os import environ as os_environ
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -17,6 +18,11 @@ from tulip import gr1cint
 from tulip.spec import GRSpec
 import tulip.polytope as pc
 from tulip.polytope.plot import plot_partition
+
+if os_environ.has_key("TULIP_REGRESS"):
+    regression_mode = True
+else:
+    regression_mode = False
 
 
 spec_filename = "rsimple_live_example.spc"
@@ -107,6 +113,8 @@ with open(spec_filename, "w") as f:
 
 ############################################################
 # Simulate
+if regression_mode:
+    np.random.seed(0)
 
 # Open interactive gr1c session
 gs = gr1cint.GR1CSession(spec_filename,
@@ -129,7 +137,7 @@ u_arr = np.zeros([N*num_it, sys_dyn.B.shape[1]])
 d_arr = np.zeros([N*num_it, sys_dyn.E.shape[1]])
 for i in range(num_it-1):
     # Switch to next goal mode if current satisfied
-    if gs.getindex(state, goal_mode) == 0:
+    if gs.getindex(state, goal_mode) == 1:
         if goal_mode < len(spec.sys_prog)-1:
             goal_mode += 1
         else:
@@ -166,19 +174,19 @@ for i in range(num_it-1):
 
 
 # Plot state trajectory
-ax = plot_partition(disc_dynamics, show=False)
-arr_size = 0.05
-for i in range(1,x_arr.shape[0]):
-    x = x_arr[i-1,0]
-    y = x_arr[i-1,1]
-    dx = x_arr[i,0] - x
-    dy = x_arr[i,1] - y
-    arr = matplotlib.patches.Arrow(float(x),float(y),float(dx),float(dy),width=arr_size)
-    ax.add_patch(arr)
-spec_ind = range(0, x_arr.shape[0], N)
+if not regression_mode:
+    ax = plot_partition(disc_dynamics, show=False)
+    arr_size = 0.05
+    for i in range(1,x_arr.shape[0]):
+        x = x_arr[i-1,0]
+        y = x_arr[i-1,1]
+        dx = x_arr[i,0] - x
+        dy = x_arr[i,1] - y
+        arr = matplotlib.patches.Arrow(float(x),float(y),float(dx),float(dy),width=arr_size)
+        ax.add_patch(arr)
+    spec_ind = range(0, x_arr.shape[0], N)
 
-ax.plot(x_arr[spec_ind,0], x_arr[spec_ind,1], 'oy')
-ax.plot(x_arr[0,0], x_arr[0,1], 'og')
-ax.plot(x_arr[-1,0], x_arr[-1,1], 'or')
-
-plt.show()
+    ax.plot(x_arr[spec_ind,0], x_arr[spec_ind,1], 'oy')
+    ax.plot(x_arr[0,0], x_arr[0,1], 'og')
+    ax.plot(x_arr[-1,0], x_arr[-1,1], 'or')
+    plt.show()

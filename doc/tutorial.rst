@@ -122,7 +122,7 @@ CtsSysDyn class is used to define continuous dynamics.
 Once we have the proposition preserving partition and the continuous dynamics,
 continuous state space discretization can be done using the following function call:
 
-     .. autofunction:: discretize.discretizeM
+     .. autofunction:: discretize.discretize
 	:noindex:
 
 

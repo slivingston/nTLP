@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-#
-# Copyright (c) 2011, 2012 by California Institute of Technology
+# Copyright (c) 2011-2013 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,8 +29,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
-# 
-# $Id$
 """ 
 Specification module
 """
@@ -50,6 +46,11 @@ class GRSpec:
       - C{env_vars}: a list of variables (names given as strings) that
         are determined by the environment.
 
+      - C{env_domains} : a list of the domains of variables in
+        env_vars (order matches that of env_vars).  Only two types are
+        currently supported: "boolean", and a tuple (0,k) indicating
+        the domain is all integers from 0 to k, inclusive.
+
       - C{env_init}: a string or a list of string that specifies the
         assumption about the initial state of the environment.
 
@@ -61,6 +62,8 @@ class GRSpec:
 
       - C{sys_vars}: a list of variables (names given as strings) that
         are controlled by the system.
+
+      - C{sys_domains}: entirely similar to env_domains.
 
       - C{sys_init}: a string or a list of string that specifies the
         requirement on the initial state of the system.
@@ -75,13 +78,25 @@ class GRSpec:
     as "True" in the specification. This corresponds to the constant
     Boolean function, which usually means that subformula has no
     effect (is non-restrictive) on the spec.
+
+    If variable domains are not provided at invocation, then all
+    variables are assumed to be boolean.
     """
-    def __init__(self, env_vars=[], sys_vars=[],
+    def __init__(self, env_vars=[], env_domains=None,
+                 sys_vars=[], sys_domains=None,
                  env_init='', sys_init='',
                  env_safety='', sys_safety='',
                  env_prog='', sys_prog=''):
         self.env_vars = copy.copy(env_vars)
+        if env_domains is not None:
+            self.env_domains = copy.deepcopy(env_domains)
+        else:
+            self.env_domains = ["boolean" for v in self.env_vars]
         self.sys_vars = copy.copy(sys_vars)
+        if sys_domains is not None:
+            self.sys_domains = copy.deepcopy(sys_domains)
+        else:
+            self.sys_domains = ["boolean" for v in self.sys_vars]
         self.env_init = copy.deepcopy(env_init)
         self.sys_init = copy.deepcopy(sys_init)
         self.env_safety = copy.deepcopy(env_safety)
@@ -122,7 +137,7 @@ class GRSpec:
                 self.env_prog = [self.env_prog]
 
 
-    def importGridWorld(self, gworld, offset=(0,0), controlled_dyn=True):
+    def importGridWorld(self, gworld, offset=(0,0), controlled_dyn=True, nonbool=True):
         """Append specification describing a gridworld.
 
         Basically, call the spec method of the given GridWorld object
@@ -130,15 +145,20 @@ class GRSpec:
         L{spec<gridworld.GridWorld.spec>} method of
         L{GridWorld<gridworld.GridWorld>} class for details.
 
+        @param nonbool: If True, then use gr1c support for nonboolean
+                 variable domains.
+
         @type gworld: L{GridWorld}
         """
-        s = gworld.spec(offset=offset, controlled_dyn=controlled_dyn)
-        for evar in s.env_vars:
+        s = gworld.spec(offset=offset, controlled_dyn=controlled_dyn, nonbool=nonbool)
+        for (i, evar) in enumerate(s.env_vars):
             if evar not in self.env_vars:
                 self.env_vars.append(evar)
-        for svar in s.sys_vars:
+                self.env_domains.append(s.env_domains[i])
+        for (i, svar) in enumerate(s.sys_vars):
             if svar not in self.sys_vars:
                 self.sys_vars.append(svar)
+                self.sys_domains.append(s.sys_domains[i])
         self.env_init.extend(s.env_init)
         self.env_safety.extend(s.env_safety)
         self.env_prog.extend(s.env_prog)
@@ -152,6 +172,9 @@ class GRSpec:
 
         disc_dynamics is an instance of PropPreservingPartition, such
         as returned by the function discretize in module discretize.
+
+        Return a dictionary with keys of the cell names and values of
+        the corresponding regions from given disc_dynamics.
 
         Notes
         =====
@@ -171,9 +194,17 @@ class GRSpec:
         if len(disc_dynamics.list_region) == 0:  # Vacuous call?
             return
         cont_varname += "_"  # ...to make cell number easier to read
+        cells = dict()
         for i in range(len(disc_dynamics.list_region)):
+            cells[cont_varname+str(i)] = disc_dynamics.list_region[i].copy()
             if (cont_varname+str(i)) not in self.sys_vars:
                 self.sys_vars.append(cont_varname+str(i))
+                self.sys_domains.append("boolean")
+        for old_var in disc_dynamics.list_prop_symbol:
+            if old_var in self.sys_vars:
+                ind = self.sys_vars.index(old_var)
+                del self.sys_vars[ind]
+                del self.sys_domains[ind]
 
         # The substitution code and transition code below are mostly
         # from createProbFromDiscDynamics and toJTLVInput,
@@ -207,7 +238,10 @@ class GRSpec:
         for from_region in range(len(disc_dynamics.list_region)):
             to_regions = [i for i in range(len(disc_dynamics.list_region))
                           if disc_dynamics.trans[i][from_region] != 0]
-            self.sys_safety.append(cont_varname+str(from_region) + " -> (" + " | ".join([cont_varname+str(i)+"'" for i in to_regions]) + ")")
+            if len(to_regions) > 0:
+                self.sys_safety.append(cont_varname+str(from_region) + " -> (" + " | ".join([cont_varname+str(i)+"'" for i in to_regions]) + ")")
+            else:
+                self.sys_safety.append(cont_varname+str(from_region) + " -> False")
 
         # Mutex
         self.sys_init.append("")
@@ -224,6 +258,8 @@ class GRSpec:
             if len(disc_dynamics.list_region) > 1:
                 self.sys_safety[-1] += " & " + " & ".join(["(!"+cont_varname+str(i)+"')" for i in range(len(disc_dynamics.list_region)) if i != regID])
             self.sys_safety[-1] += ")"
+
+        return cells
 
 
     def sym2prop(self, props, verbose=0):
@@ -439,8 +475,17 @@ class GRSpec:
 
     def dumpgr1c(self):
         """Dump to gr1c specification string."""
-        output = "ENV: "+" ".join(self.env_vars)+";\n"
-        output += "SYS: "+" ".join(self.sys_vars)+";\n\n"
+        output = "ENV:"
+        for (eindex, ev) in enumerate(self.env_vars):
+            output += " "+ev
+            if isinstance(self.env_domains[eindex], tuple) and len(self.env_domains[eindex]) == 2:
+                output += " ["+str(self.env_domains[eindex][0])+","+str(self.env_domains[eindex][1])+"]"
+        output += ";\nSYS:"
+        for (sindex, sv) in enumerate(self.sys_vars):
+            output += " "+sv
+            if isinstance(self.sys_domains[sindex], tuple) and len(self.sys_domains[sindex]) == 2:
+                output += " ["+str(self.sys_domains[sindex][0])+","+str(self.sys_domains[sindex][1])+"]"
+        output +=";\n\n"
 
         if isinstance(self.env_init, str):
             output += "ENVINIT: "+self.env_init+";\n"
@@ -475,4 +520,51 @@ class GRSpec:
             output += "SYSGOAL: []<>"+self.sys_prog+";\n"
         else:
             output += "SYSGOAL: "+"\n& ".join(["[]<>("+s+")" for s in self.sys_prog])+";\n"
+        return output
+
+
+    def dumpgr1c_rg(self):
+        """Dump to gr1c "reachability game" specification string."""
+        output = "ENV: "+" ".join(self.env_vars)+";\n"
+        output += "SYS: "+" ".join(self.sys_vars)+";\n\n"
+
+        if isinstance(self.env_init, str):
+            output += "ENVINIT: "+self.env_init+";\n"
+        else:
+            output += "ENVINIT: "+"\n& ".join(["("+s+")" for s in self.env_init])+";\n"
+        if len(self.env_safety) == 0:
+            output += "ENVTRANS:;\n"
+        elif isinstance(self.env_safety, str):
+            output += "ENVTRANS: []"+self.env_safety+";\n"
+        else:
+            output += "ENVTRANS: "+"\n& ".join(["[]("+s+")" for s in self.env_safety])+";\n"
+        if len(self.env_prog) == 0:
+            output += "ENVGOAL:;\n\n"
+        elif isinstance(self.env_prog, str):
+            output += "ENVGOAL: []<>"+self.env_prog+";\n\n"
+        else:
+            output += "ENVGOAL: "+"\n& ".join(["[]<>("+s+")" for s in self.env_prog])+";\n\n"
+
+        if isinstance(self.sys_init, str):
+            output += "SYSINIT: "+self.sys_init+";\n"
+        else:
+            output += "SYSINIT: "+"\n& ".join(["("+s+")" for s in self.sys_init])+";\n"
+        if len(self.sys_safety) == 0:
+            output += "SYSTRANS:;\n"
+        elif isinstance(self.sys_safety, str):
+            output += "SYSTRANS: []"+self.sys_safety+";\n"
+        else:
+            output += "SYSTRANS: "+"\n& ".join(["[]("+s+")" for s in self.sys_safety])+";\n"
+        if len(self.sys_prog) == 0:
+            output += "SYSGOAL:;\n"
+        elif isinstance(self.sys_prog, str):
+            output += "SYSGOAL: <>"+self.sys_prog+";\n"
+        else:
+            output += "SYSGOAL:"
+            if len(self.sys_prog) == 0:
+                output += ";"
+            elif len(self.sys_prog) == 1:
+                output += " <>("+self.sys_prog[0]+");\n"
+            else:
+                raise TypeError("Specification is malformed.")
         return output

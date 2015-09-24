@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-#
-# Copyright (c) 2011 by California Institute of Technology
+# Copyright (c) 2011-2013 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,8 +29,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
-# 
-# $Id$
 """
 Several functions that help in working with tulipcon XML files.
 
@@ -74,7 +70,8 @@ RHTLP_PROB = 2
 ###############
 # XML Globals #
 ###############
-DEFAULT_NAMESPACE = "http://tulip-control.sourceforge.net/ns/0"
+DEFAULT_NAMESPACE = "http://tulip-control.sourceforge.net/ns/1"
+v0_NAMESPACE = "http://tulip-control.sourceforge.net/ns/0"
 
 
 def readXMLfile(fname, verbose=0):
@@ -121,10 +118,18 @@ def loadXML(x, verbose=0, namespace=DEFAULT_NAMESPACE):
         ns_prefix = "{"+namespace+"}"
         
     if elem.tag != ns_prefix+"tulipcon":
-        raise TypeError("root tag should be tulipcon.")
+        if namespace == DEFAULT_NAMESPACE:
+            # Try other versions
+            namespace = v0_NAMESPACE
+            ns_prefix = "{"+namespace+"}"
+            if elem.tag != ns_prefix+"tulipcon":
+                raise TypeError("root tag should be tulipcon.")
+        else:
+            raise TypeError("root tag should be tulipcon.")
     if ("version" not in elem.attrib.keys()):
         raise ValueError("unversioned tulipcon XML string.")
-    if int(elem.attrib["version"]) != 0:
+    version = int(elem.attrib["version"])
+    if version not in [1, 0]:
         raise ValueError("unsupported tulipcon XML version: "+str(elem.attrib["version"]))
 
     ptype_tag = elem.find(ns_prefix+"prob_type")
@@ -152,10 +157,45 @@ def loadXML(x, verbose=0, namespace=DEFAULT_NAMESPACE):
         (tag_name, Wset) = untagpolytope(c_dyn.find(ns_prefix+"W_set"))
         sys_dyn = discretize.CtsSysDyn(A, B, E, K, Uset, Wset)
 
-    # Extract LTL specification
+    # Extract discrete variables and LTL specification
+    (tag_name, env_vardict, env_vars) = untagdict(elem.find(ns_prefix+"env_vars"), get_order=True)
+    (tag_name, sys_vardict, sys_vars) = untagdict(elem.find(ns_prefix+"sys_vars"), get_order=True)
     s_elem = elem.find(ns_prefix+"spec")
     if s_elem.find(ns_prefix+"env_init") is not None:  # instance of GRSpec style
-        spec = GRSpec()
+        env_domains = []
+        for v in env_vars:
+            dom = env_vardict[v]
+            if dom[0] == "[":
+                end_ind = dom.find("]")
+                if end_ind < 0:
+                    raise ValueError("invalid domain for variable \""+str(v)+"\": "+str(dom))
+                dom_parts = dom[1:end_ind].split(",")
+                if len(dom_parts) != 2:
+                    raise ValueError("invalid domain for variable \""+str(v)+"\": "+str(dom))
+                env_domains.append((int(dom_parts[0]), int(dom_parts[1])))
+            elif dom == "boolean":
+                env_domains.append("boolean")
+            else:
+                raise ValueError("unrecognized type of domain for variable \""+str(v)+"\": "+str(dom))
+        sys_domains = []
+        for v in sys_vars:
+            dom = sys_vardict[v]
+            if dom[0] == "[":
+                end_ind = dom.find("]")
+                if end_ind < 0:
+                    raise ValueError("invalid domain for variable \""+str(v)+"\": "+str(dom))
+                dom_parts = dom[1:end_ind].split(",")
+                if len(dom_parts) != 2:
+                    raise ValueError("invalid domain for variable \""+str(v)+"\": "+str(dom))
+                sys_domains.append((int(dom_parts[0]), int(dom_parts[1])))
+            elif dom == "boolean":
+                sys_domains.append("boolean")
+            else:
+                raise ValueError("unrecognized type of domain for variable \""+str(v)+"\": "+str(dom))
+        spec = GRSpec(env_vars=env_vars,
+                      env_domains=env_domains,
+                      sys_vars=sys_vars,
+                      sys_domains=sys_domains)
         for spec_tag in ["env_init", "env_safety", "env_prog",
                          "sys_init", "sys_safety", "sys_prog"]:
             if s_elem.find(ns_prefix+spec_tag) is None:
@@ -168,6 +208,8 @@ def loadXML(x, verbose=0, namespace=DEFAULT_NAMESPACE):
             setattr(spec, spec_tag, li)
 
     else:  # assume, guarantee strings style
+        if version > 0:  # ...not allowed in later versions
+            raise ValueError("tulipcon XML string has invalid spec syntax.")
         spec = ["", ""]
         if s_elem.find(ns_prefix+"assume") is not None:
             spec[0] = s_elem.find(ns_prefix+"assume").text
@@ -188,7 +230,8 @@ def loadXML(x, verbose=0, namespace=DEFAULT_NAMESPACE):
         aut = None
     else:
         aut = automaton.Automaton()
-        if not aut.loadXML(aut_elem, namespace=DEFAULT_NAMESPACE):
+        if not aut.loadXML(aut_elem, namespace=namespace,
+                           version=version):
             ep.printError("failed to read Automaton from given tulipcon XML string.")
             aut = None
 
@@ -197,8 +240,6 @@ def loadXML(x, verbose=0, namespace=DEFAULT_NAMESPACE):
     if d_dyn is None:
         prob = None
     else:
-        (tag_name, env_vars) = untagdict(elem.find(ns_prefix+"env_vars"))
-        (tag_name, sys_disc_vars) = untagdict(elem.find(ns_prefix+"sys_vars"))
         if ((d_dyn.find(ns_prefix+"domain") is None)
             and (d_dyn.find(ns_prefix+"trans") is None)
             and (d_dyn.find(ns_prefix+"prop_symbols") is None)):
@@ -243,8 +284,8 @@ def loadXML(x, verbose=0, namespace=DEFAULT_NAMESPACE):
 
         # Build appropriate ``problem'' instance
         if ptype == SYNTH_PROB:
-            prob = jtlvint.generateJTLVInput(env_vars=env_vars,
-                                             sys_disc_vars=sys_disc_vars,
+            prob = jtlvint.generateJTLVInput(env_vars=env_vardict,
+                                             sys_disc_vars=sys_vardict,
                                              spec=spec,
                                              disc_props={},
                                              disc_dynamics=disc_dynamics,
@@ -252,15 +293,15 @@ def loadXML(x, verbose=0, namespace=DEFAULT_NAMESPACE):
         elif ptype == RHTLP_PROB:
             if disc_dynamics is not None:
                 prob = rhtlp.RHTLPProb(shprobs=[], Phi="True", discretize=False,
-                                       env_vars=env_vars,
-                                       sys_disc_vars=sys_disc_vars,
+                                       env_vars=env_vardict,
+                                       sys_disc_vars=sys_vardict,
                                        disc_dynamics=disc_dynamics,
                                        #cont_props=cont_props,
                                        spec=spec)
             else:
                 prob = rhtlp.RHTLPProb(shprobs=[], Phi="True", discretize=False,
-                                       env_vars=env_vars,
-                                       sys_disc_vars=sys_disc_vars,
+                                       env_vars=env_vardict,
+                                       sys_disc_vars=sys_vars,
                                        #cont_props=cont_props,
                                        spec=spec)
         elif ptype == NONE_PROB:
@@ -331,7 +372,7 @@ def dumpXML(prob=None, spec=['',''], sys_dyn=None, aut=None,
     idt_level = 0
 
     output = '<?xml version="1.0" encoding="UTF-8"?>'+nl
-    output += '<tulipcon xmlns="http://tulip-control.sourceforge.net/ns/0" version="0">'+nl
+    output += '<tulipcon xmlns="http://tulip-control.sourceforge.net/ns/1" version="1">'+nl
     idt_level += 1
     if sys_dyn is not None:
         output += idt*idt_level+'<prob_type>'
@@ -362,8 +403,20 @@ def dumpXML(prob=None, spec=['',''], sys_dyn=None, aut=None,
             output += tagdict("env_vars", prob.getEnvVars(), pretty=pretty, idt_level=idt_level)
             output += tagdict("sys_vars", prob.getSysVars(), pretty=pretty, idt_level=idt_level)
         else:
-            output += tagdict("env_vars", dict([(v,"boolean") for v in spec.env_vars]), pretty=pretty, idt_level=idt_level)
-            output += tagdict("sys_vars", dict([(v,"boolean") for v in spec.sys_vars]), pretty=pretty, idt_level=idt_level)
+            var_dict = dict()
+            for (i,v) in enumerate(spec.env_vars):
+                if isinstance(spec.env_domains[i], tuple) and len(spec.env_domains[i]) == 2:
+                    var_dict[v] = "["+str(spec.env_domains[i][0])+","+str(spec.env_domains[i][1])+"]"
+                else:
+                    var_dict[v] = "boolean"
+            output += tagdict("env_vars", var_dict, pretty=pretty, idt_level=idt_level)
+            var_dict = dict()
+            for (i,v) in enumerate(spec.sys_vars):
+                if isinstance(spec.sys_domains[i], tuple) and len(spec.sys_domains[i]) == 2:
+                    var_dict[v] = "["+str(spec.sys_domains[i][0])+","+str(spec.sys_domains[i][1])+"]"
+                else:
+                    var_dict[v] = "boolean"
+            output += tagdict("sys_vars", var_dict, pretty=pretty, idt_level=idt_level)
 
     if spec is None:
         output += idt*idt_level+'<spec><assume></assume><guarantee></guarantee></spec>'+nl
@@ -563,7 +616,7 @@ def dumpXMLtrans(sys_dyn, disc_dynamics, horizon, extra="",
     idt_level = 0
 
     output = '<?xml version="1.0" encoding="UTF-8"?>'+nl
-    output += '<tulipcon xmlns="http://tulip-control.sourceforge.net/ns/0" version="0">'+nl
+    output += '<tulipcon xmlns="http://tulip-control.sourceforge.net/ns/1" version="1">'+nl
     idt_level += 1
     output += idt*idt_level+'<c_dyn>'+nl
     idt_level += 1
@@ -656,8 +709,8 @@ def untaglist(x, cast_f=float,
     return (elem.tag, li)
 
 def untagdict(x, cast_f_keys=None, cast_f_values=None,
-              namespace=DEFAULT_NAMESPACE):
-    """Extract list from given tulipcon XML tag (string).
+              namespace=DEFAULT_NAMESPACE, get_order=False):
+    """Extract dictionary from given tulipcon XML tag (string).
 
     Use functions cast_f_keys and cast_f_values for type-casting
     extracting key and value strings, respectively, or None.  The
@@ -673,7 +726,9 @@ def untagdict(x, cast_f_keys=None, cast_f_values=None,
     load/dumpXML methods elsewhere.
 
     Return result as 2-tuple, containing name of the tag (as a string)
-    and the dictionary obtained from it.
+    and the dictionary obtained from it.  If get_order is True, then
+    return a triple, where the first two elements are as usual and the
+    third is the list of keys in the order they were found.
     """
     if not isinstance(x, str) and not isinstance(x, ET._ElementInterface):
         raise TypeError("tag to be parsed must be given as a string or ElementTree._ElementInterface.")
@@ -689,16 +744,23 @@ def untagdict(x, cast_f_keys=None, cast_f_values=None,
         ns_prefix = "{"+namespace+"}"
 
     # Extract dictionary
-    items_li = elem.findall(ns_prefix+'item')
+    items_li = elem.findall(ns_prefix+"item")
     if cast_f_keys is None:
         cast_f_keys = str
     if cast_f_values is None:
         cast_f_values = str
     di = dict()
+    if get_order:
+        key_list = []
     for item in items_li:
         # N.B., we will overwrite duplicate keys without warning!
-        di[cast_f_keys(item.attrib['key'])] = cast_f_values(item.attrib['value'])
-    return (elem.tag, di)
+        di[cast_f_keys(item.attrib["key"])] = cast_f_values(item.attrib["value"])
+        if get_order:
+            key_list.append(item.attrib["key"])
+    if get_order:
+        return (elem.tag, di, key_list)
+    else:
+        return (elem.tag, di)
 
 def untagmatrix(x, np_type=np.float64):
     """Extract matrix from given tulipcon XML tag (string).
@@ -1013,8 +1075,6 @@ def loadYAML(x, verbose=0):
     if (("A" not in dumped_data.keys())
         or ("B" not in dumped_data.keys())
         or ("U" not in dumped_data.keys())
-        or ("H" not in dumped_data["U"].keys())
-        or ("K" not in dumped_data["U"].keys())
         or ("initial_part" not in dumped_data.keys())
         or ("X" not in dumped_data.keys())):
         raise ValueError("Missing required data.")

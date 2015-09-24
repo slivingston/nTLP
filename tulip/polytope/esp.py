@@ -1,4 +1,3 @@
-#
 # Copyright (c) 2011 by California Institute of Technology
 # All rights reserved.
 #
@@ -39,8 +38,6 @@
 #  in halfspace representation,
 #  http://www-control.eng.cam.ac.uk/~cnj22/research/projection.html
 #  2004
-# 
-
 '''Implementing the non-vertex polytope projection method
 Equality Set Projection (ESP) from 
 http://www-control.eng.cam.ac.uk/~cnj22/research/projection.html

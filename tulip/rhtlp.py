@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2011, 2012 by California Institute of Technology
+# Copyright (c) 2011-2013 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,12 +31,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
-# 
-# $Id$
 """ 
------------------------------------------------
 Receding horizon Temporal Logic Planning Module
------------------------------------------------
 """
 
 import sys, os, re, subprocess, copy
@@ -121,6 +117,9 @@ class SynthesisProb:
       synthesis problem
 
     - `verbose`: an integer that specifies the level of verbosity.
+
+    - `use_yices`: flag to request use of Yices instead of CVC4 for
+      satisfiability checking.  Default is False, i.e., not use Yices.
     """
 
     def __init__(self, **args):
@@ -132,10 +131,16 @@ class SynthesisProb:
                                env_prog='', sys_prog='')
         self.__disc_cont_var = ''
         self.__disc_dynamics = None
+
+        use_yices = args.get('use_yices', False)
+
         self.__jtlvfile = args.get('sp_name',
                                    os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])), 'tmpspec', 'tmp'))
-        self.__ysfile = args.get('sp_name',
-                                 os.path.join(os.path.dirname(self.__jtlvfile), 'tmp')) + '.ys'
+        if use_yices:
+            self.__ysfile = args.get('sp_name',
+                                     os.path.join(os.path.dirname(self.__jtlvfile), 'tmp')) + '.ys'
+        else:
+            self.__ysfile = None  # Indicate not to use Yices.
         self.__realizable = None
 
         verbose = args.get('verbose', 0)
@@ -359,7 +364,7 @@ class SynthesisProb:
 
     def setYsFile(self, ysfile):
         """Set the temporary Yices file (*.ys)."""
-        if isinstance(ysfile, str):
+        if isinstance(ysfile, str) or (ysfile is None):
             self.__ysfile = ysfile
             self.__realizable = None
         else:
@@ -1376,6 +1381,9 @@ class RHTLPProb(SynthesisProb):
       synthesis problem
 
     - `verbose`: an integer that specifies the level of verbosity.
+
+    - `use_yices`: flag to request use of Yices instead of CVC4 for
+      satisfiability checking.  Default is False, i.e., not use Yices.
     """
     def __init__(self, shprobs=[], Phi='True', discretize=False, **args):
         self.shprobs = []
@@ -1384,10 +1392,16 @@ class RHTLPProb(SynthesisProb):
         self.__cont_props = {}
         self.__sys_prog = 'True'
         self.__all_init = 'True'
+
+        use_yices = args.get('use_yices', False)
+
         self.setJTLVFile(args.get('sp_name',
                                   os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])), 'tmpspec', 'tmp')))
-        self.setYsFile(args.get('sp_name',
-                                os.path.join(os.path.dirname(self.getJTLVFile()), 'tmp')) + '.ys')
+        if use_yices:
+            self.setYsFile(args.get('sp_name',
+                                    os.path.join(os.path.dirname(self.getJTLVFile()), 'tmp')) + '.ys')
+        else:
+            self.setYsFile(None)
 
         if (isinstance(shprobs, list)):
             for shprob in shprobs:
@@ -1630,28 +1644,29 @@ class RHTLPProb(SynthesisProb):
             printError('excluded_state has to be a list or a dictionary.')
             raise TypeError("Invalid excluded_state.")
             
-        use_yices = True
         try:
             if (verbose > 0):
-                print("Trying yices")
+                print("Trying SMT solver")
             allvars = self.__getAllVarsRaw(verbose=verbose)
             expr = '!(' + allW_formula + ') & !(' + es_formula + ')'
-            ret = rhtlputil.yicesSolveSat(expr=expr, allvars=allvars,
-                                          ysfile=self.getYsFile(),
-                                          verbose=verbose)
-            if (ret is None):
-                use_yices = False
-            elif (ret[0]):
-                return ret[1]
+            if self.getYsFile() is not None:
+                ret = rhtlputil.yicesSolveSat(expr=expr, allvars=allvars,
+                                              ysfile=self.getYsFile(),
+                                              verbose=verbose)
             else:
-                return True
+                ret = rhtlputil.cvc4_qf_lia(expr=expr, allvars=allvars,
+                                            verbose=verbose)
+            if ret is not None:
+                if ret[0]:
+                    return ret[1]
+                else:
+                    return True
         except:
-            printError("yices failed!")
+            printError("The SMT solver failed!")
             print sys.exc_info()[0], sys.exc_info()[1]
-            use_yices = False
         
-        if (not use_yices):
-            print("yices failed. Enumerating states.")
+        if ret is None:
+            print("The SMT solver failed. Enumerating states.")
 
             (allvars_variables, allvars_values) = self.__getAllVars(verbose=verbose)
 
@@ -1735,34 +1750,35 @@ class RHTLPProb(SynthesisProb):
         if (self.__sys_prog == True):
             return W0ind
 
-        use_yices = True
         try:
             if (verbose > 0):
-                print("Trying yices")
+                print("Trying SMT solver")
             allvars = self.__getAllVarsRaw(verbose=verbose)
             newW0ind = []
             for ind in W0ind:
                 expr = '!((' + self.shprobs[ind].getW() + ') -> (' + self.__sys_prog + '))'
-                ret = rhtlputil.yicesSolveSat(expr=expr, allvars=allvars,
-                                              ysfile=self.getYsFile(),
-                                              verbose=verbose)
-                if (ret is None):
-                    use_yices = False
+                if self.getYsFile() is not None:
+                    ret = rhtlputil.yicesSolveSat(expr=expr, allvars=allvars,
+                                                  ysfile=self.getYsFile(),
+                                                  verbose=verbose)
+                else:
+                    ret = rhtlputil.cvc4_qf_lia(expr=expr, allvars=allvars,
+                                                verbose=verbose)
+                if ret is None:
                     break
                 elif (not ret[0]):
                     newW0ind.append(ind)
                 elif (verbose > 0):
                     print 'W[' + str(ind) + '] does not satisfy spec.sys_prog'
                     print 'counter example: \n' + ret[1]
-            if (use_yices):
+            if ret is None:
                 W0ind = newW0ind
         except:
-            printError("yices failed!")
+            printError("The SMT solver failed!")
             print sys.exc_info()[0], sys.exc_info()[1]
-            use_yices = False
         
-        if (not use_yices):
-            print("yices failed. Enumerating states.")
+        if ret is None:
+            print("The SMT solver failed. Enumerating states.")
 
             (allvars_variables, allvars_values) = self.__getAllVars(verbose=verbose)
 
@@ -1801,29 +1817,30 @@ class RHTLPProb(SynthesisProb):
         self.__Phi = self.__replacePropSymbols(formula = self.__Phi, verbose=verbose)
 
         # Check whether self.__all_init -> Phi is a tautology
-        use_yices = True
         try:
             if (verbose > 0):
-                print("Trying yices")
+                print("Trying SMT solver")
             allvars = self.__getAllVarsRaw(verbose=verbose)
             expr = '!((' + self.__all_init + ') -> (' + self.__Phi + '))'
-            ret = rhtlputil.yicesSolveSat(expr=expr, allvars=allvars,
-                                          ysfile=self.getYsFile(),
-                                          verbose=verbose)
-            if (ret is None):
-                use_yices = False
-            elif (not ret[0]):
-                return True
-            elif (verbose > 0):
-                printInfo('sys_init -> Phi is not a tautology')
-                print 'counter example: \n' + ret[1]
+            if self.getYsFile() is not None:
+                ret = rhtlputil.yicesSolveSat(expr=expr, allvars=allvars,
+                                              ysfile=self.getYsFile(),
+                                              verbose=verbose)
+            else:
+                ret = rhtlputil.cvc4_qf_lia(expr=expr, allvars=allvars,
+                                            verbose=verbose)
+            if ret is not None:
+                if (not ret[0]):
+                    return True
+                elif (verbose > 0):
+                    printInfo('sys_init -> Phi is not a tautology')
+                    print 'counter example: \n' + ret[1]
         except:
-            printError("yices failed!")
+            printError("The SMT solver failed!")
             print sys.exc_info()[0], sys.exc_info()[1]
-            use_yices = False
         
-        if (not use_yices):
-            print("yices failed. Enumerating states.")
+        if ret is None:
+            print("The SMT solver failed. Enumerating states.")
 
             (allvars_variables, allvars_values) = self.__getAllVars(verbose=verbose)
             allvars_values_iter = rhtlputil.product(*allvars_values)

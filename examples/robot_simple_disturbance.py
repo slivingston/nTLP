@@ -105,8 +105,8 @@ states = grsim.grsim([aut], env_states=[init_state], num_it=num_it,
 
 # Store discrete trajectory in np array
 cellid_arr = []
-for (autID, state) in states:
-    cellid_arr.append(state.state['cellID'])
+for (autID, n) in states:
+    cellid_arr.append(aut.node[n]["state"]['cellID'])
 cellid_arr = np.array(cellid_arr)
 
 # First continuous state is middle point of first cell

@@ -1,8 +1,8 @@
-default namespace = "http://tulip-control.sourceforge.net/ns/0"
+default namespace = "http://tulip-control.sourceforge.net/ns/1"
 datatypes xsd = "http://www.w3.org/2001/XMLSchema-datatypes"
 
 start = element tulipcon {
-    attribute version { string "0" }
+    attribute version { "0" | "1" }
     & element prob_type { "synth" | "rhtlp" | "none" }?
     & element c_dyn { c_dyn-content }?
     & element env_vars { item-tag* }?
@@ -10,8 +10,6 @@ start = element tulipcon {
     & element spec { spec-content }?
     & element d_dyn { d_dyn-content }?
     & element aut { aut-content }?
-    & element smv_file { text }?
-    & element spec_file { text }?
     & element extra { text }
 }
 
@@ -49,14 +47,12 @@ c_dyn-content =
     & element W_set { polytope-content }
 
 spec-content =
-    (element assume { text }
-     & element guarantee { text })
-    | (element env_init { litem-tag* }
-       & element env_safety { litem-tag* }
-       & element env_prog { litem-tag* }
-       & element sys_init { litem-tag* }
-       & element sys_safety { litem-tag* }
-       & element sys_prog { litem-tag* })
+    (element env_init { litem-tag* }
+     & element env_safety { litem-tag* }
+     & element env_prog { litem-tag* }
+     & element sys_init { litem-tag* }
+     & element sys_safety { litem-tag* }
+     & element sys_prog { litem-tag* })
 
 regions-content =
     element region {
@@ -75,10 +71,12 @@ d_dyn-content =
       | empty)
 
 aut-content =
-    element node {
-      element id { text }
-      & element name { text | empty }?
-      & element child_list { list { xsd:integer* } }
-      & element state { item-tag* }
-    }*
-
+    attribute type { "basic" | "embedded" }
+    & attribute trans { list { xsd:integer* } }?
+    & element node {
+	element id { text }
+	& element anno { text | empty }?
+	& element child_list { list { xsd:integer* } }
+	& element state { item-tag* }
+      }*
+    & element aut { aut-content }*

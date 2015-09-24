@@ -39,7 +39,7 @@ help:
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
 
 clean:
-	-rm -rf $(BUILDDIR)/* $(EPYBUILDDIR)/*
+	-rm -rf $(BUILDDIR)/*
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
@@ -135,4 +135,5 @@ doctest:
 	      "results in $(BUILDDIR)/doctest/output.txt."
 
 api:
-	$(EPYDOC) --html -v --name=TuLiP --url=http://tulip-control.sourceforge.net -o $(EPYBUILDDIR) $(TULIP_REL)/{__init__.py,automaton.py,congexf.py,conxml.py,discretize.py,errorprint.py,gr1cint.py,grsim.py,jtlvint.py,prop2part.py,rhtlp.py,rhtlputil.py,spec.py,gridworld.py,polytope/__init__.py,polytope/esp.py,polytope/plot.py,polytope/polytope.py,polytope/quickhull.py}
+	mkdir -p $(BUILDDIR)/$(EPYBUILDDIR)
+	$(EPYDOC) --html -v --name=nTLP --url=http://scottman.net/2013/nTLP -o $(BUILDDIR)/$(EPYBUILDDIR) --exclude='parser|parsespec|ltl_parse|polytope.__init__|polytope.esp|polytope.quickhull' $(TULIP_REL)

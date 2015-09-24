@@ -1,7 +1,10 @@
-""" An aircraft electric system specification generator presented in the HSCC 2013 paper.
+"""An aircraft electric system specification generator.
 
+Generation for Yices and TuLiP were presented in a HSCC 2013 paper.
 Huan Xu (mumu@caltech.edu)
 October 30, 2012
+
+Generation into SMT-LIB v2 language by SCL, 27 January 2013
 """
 
 import sys, os
@@ -811,6 +814,52 @@ def write_sat_con(G,rulist,dcbuslist,nullist):
     for i in range(0,len(edges)):
         f.write('(define c'+str(edges[i][0])+str(edges[i][1])+'::bool)\n')
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def write_sat_bool_smtlib2(complist):
+    """Define boolean components (not including contactors) in SMT-LIB
+
+    Parameters
+    ----------
+    complist : list of all components
+
+    """
+    for i in complist:
+        if i in gens:
+            f.write('(declare-fun g'+str(i)+' () Bool)\n')
+        elif i in busac:
+            f.write('(declare-fun b'+str(i)+' () Bool)\n')
+        elif i in busdc:
+            f.write('(declare-fun b'+str(i)+' () Bool)\n')
+        elif i in null:
+            f.write('(declare-fun b'+str(i)+' () Bool)\n')
+        elif i in rus:
+            f.write('(declare-fun r'+str(i)+' () Bool)\n')
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def write_sat_con_smtlib2(G,rulist,dcbuslist,nullist):
+    """Define contactors (removes contactors between rus and dcbuses) in SMT-LIB
+
+    Parameters
+    ----------
+    G : networkX graph
+
+    rulist: list of rectifier units
+
+    dcbuslist: list of all dc buses
+
+    """
+    remove = []
+    remove2 = []
+    for i in rulist:
+        for j in dcbuslist:
+            remove.append((i,j))
+    L = copy.deepcopy(G)
+    L.remove_edges_from(remove)
+
+    remove2 = all_pairs(nullist)
+    L.remove_edges_from(remove2)
+    edges = L.edges()
+    for i in range(0,len(edges)):
+        f.write('(declare-fun c'+str(edges[i][0])+str(edges[i][1])+' () Bool)\n')
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def write_sat_always(complist):
     """Asserts boolean components always on/powered
     
@@ -1009,7 +1058,11 @@ def write_sat_dcbusprop2(G,buslist, genlist):
             H = copy.deepcopy(G)
         f.write(')) (= b'+str(i)+' false)))\n')
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def write_sat_env(gfail,rfail):
+def write_sat_env(gfail, rfail, lang="yices"):
+    if lang == "smtlib2":
+        postface = ["(check-sat)", "(exit)"]
+    else:  # Assume Yices otherwise
+        postface = ["(check)"]
     gentemp = [x for x in range(0,gfail+1)]
     rutemp = [x for x in range(0,rfail+1)]
     allgens = []
@@ -1037,7 +1090,10 @@ def write_sat_env(gfail,rfail):
     allrus = list(set(allrus))
     for i in range(0,len(allgens)):
         for j in range(0,len(allrus)):
-            env_filename = 'env'+str(count)+'.ys'
+            if lang == "smtlib2":
+                env_filename = 'env'+str(count)+'.smt2'
+            else:  # Assume Yices otherwise
+                env_filename = 'env'+str(count)+'.ys'
             f2 = open(env_filename,"w")
             for k in gens:
                 if isinstance(allgens[i],int):
@@ -1060,9 +1116,9 @@ def write_sat_env(gfail,rfail):
                 else:
                     f2.write('(assert (= r'+str(m)+' false))\n')
             count = count+1
-            f2.write('(check)\n')
+            f2.write("\n".join(postface)+"\n")
             f2.close()
-            
+
 #************************************************************************************************
 start = time.time()
 file_name = 'test_spec'
@@ -1174,9 +1230,20 @@ if ('tulip' in sys.argv):
 ################################################################
 # Synthesize
 ################################################################
-if ('yices' in sys.argv):
-    file_name = file_name+'.ys'
+if ('yices' in sys.argv) or ('smtlib' in sys.argv):
+    if "smtlib" in sys.argv:
+        file_name = file_name+'.smt2'
+        write_sat_bool = write_sat_bool_smtlib2
+        write_sat_con = write_sat_con_smtlib2
+        preface = ["(set-option :print-success false)",
+                   "(set-option :produce-models true)",
+                   "(set-logic QF_LIA)"]
+    else:
+        file_name = file_name+'.ys'
+        preface = []
     f = open(file_name, "w")
+    if len(preface) > 0:
+        f.write("\n".join(preface)+"\n")
 
     #Writing component definitions
     write_sat_bool(gens)
@@ -1204,7 +1271,10 @@ if ('yices' in sys.argv):
     write_sat_dcbusprop2(G,busdc, gens)
 
     #write_environment assumptions
-    write_sat_env(genfail,rufail)
+    if "smtlib" in sys.argv:
+        write_sat_env(genfail, rufail, lang="smtlib2")
+    else:
+        write_sat_env(genfail,rufail)
     
     f.close()
     print 'It took', time.time()-start, 'seconds.'

@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-#
-# Copyright (c) 2012 by California Institute of Technology
+# Copyright (c) 2012, 2013 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,10 +29,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
-# 
-# $Id$
 """
 Interface to gr1c
+
+About gr1c, see http://scottman.net/2012/gr1c
 
 In general, functions defined here will raise CalledProcessError (from
 the subprocess module) or OSError if an exception occurs while
@@ -95,14 +93,36 @@ def check_realizable(spec, verbose=0):
         return False
 
 
+def synthesize_reachgame(spec, verbose=0):
+    """Synthesize strategy for a "reachability game."
+
+    Return strategy as instance of Automaton class, or None if
+    unrealizable or error occurs.
+    """
+    p = subprocess.Popen([GR1C_BIN_PREFIX+"rg", "-t", "tulip"],
+                         stdin=subprocess.PIPE,
+                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    (stdoutdata, stderrdata) = p.communicate(spec.dumpgr1c_rg())
+    if p.returncode == 0:
+        (prob, sys_dyn, aut) = loadXML(stdoutdata)
+        return aut
+    else:
+        if verbose > 0:
+            print stdoutdata
+        return None
+
+
 def synthesize(spec, verbose=0):
     """Synthesize strategy.
 
     Return strategy as instance of Automaton class, or None if
     unrealizable or error occurs.
     """
-    p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "-t", "tulip0"],
-                         stdin=subprocess.PIPE,
+    if verbose == 0:
+        args = [GR1C_BIN_PREFIX+"gr1c", "-t", "tulip"]
+    else:
+        args = [GR1C_BIN_PREFIX+"gr1c", "-l", "-t", "tulip"]
+    p = subprocess.Popen(args, stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     (stdoutdata, stderrdata) = p.communicate(spec.dumpgr1c())
     if p.returncode == 0:
@@ -111,6 +131,144 @@ def synthesize(spec, verbose=0):
     else:
         if verbose > 0:
             print stdoutdata
+        return None
+
+def patch_localfixpoint(spec, aut, N, change_list,
+                        base_filename="patch_localfixpoint", verbose=0):
+    """Use an experimental patching algorithm, available through gr1c.
+
+      S.C. Livingston, P. Prabhakar, A.B. Jose, R.M. Murray.
+      Patching task-level robot controllers based on a local
+      mu-calculus formula. to appear at ICRA in May 2013.
+      (The original Caltech CDS technical report is
+       http://resolver.caltech.edu/CaltechCDSTR:2012.003)
+
+    spec is an instance of GRSpec, aut is the nominal strategy
+    automaton, and N is a list of states considered to be in the local
+    neighborhood.  As usual, states in N are defined by dictionaries
+    with variable names (strings) as keys.
+
+    change_list describes the changes to the edge set of the game
+    graph.  It is a list of pairs with the first element of each a
+    command and the second element a list of (entire or partial)
+    states, as defined in the documentation for gr1c.
+
+    The intermediate files are named by appending "_changefile.edc",
+    "_specfile.spc", and "_strategyfile.xml" to base_filename.  If any
+    file already exists, then it is overwritten.
+
+    Returns patched strategy, or None if unrealizable (or error).
+    """
+    chg_filename = base_filename+"_changefile.edc"
+    spc_filename = base_filename+"_specfile.spc"
+    if len(N) == 0:  # Trivially unrealizable
+        return None
+    if change_list is None or len(change_list) == 0:
+        return aut  # Pass back given reference, untouched
+
+    with open(chg_filename, "w") as f:
+        for state in N:
+            state_vector = range(len(state))
+            for ind in range(len(spec.env_vars)):
+                state_vector[ind] = state[spec.env_vars[ind]]
+            for ind in range(len(spec.sys_vars)):
+                state_vector[len(spec.env_vars)+ind] = state[spec.sys_vars[ind]]
+            f.write(" ".join([str(i) for i in state_vector])+"\n")
+        for (cmd, cmd_args) in change_list:
+            if cmd == "blocksys":
+                state_vector = range(len(cmd_args[0]))
+                for ind in range(len(spec.sys_vars)):
+                    state_vector[ind] = cmd_args[0][spec.sys_vars[ind]]
+                f.write(cmd+" ")
+                f.write(" ".join([str(i) for i in state_vector])+"\n")
+            elif cmd == "restrict" or cmd == "relax":
+                state_vector1 = range(len(cmd_args[0]))
+                for ind in range(len(spec.env_vars)):
+                    state_vector1[ind] = cmd_args[0][spec.env_vars[ind]]
+                for ind in range(len(spec.sys_vars)):
+                    state_vector1[len(spec.env_vars)+ind] = cmd_args[0][spec.sys_vars[ind]]
+                state_vector2 = range(len(cmd_args[1]))
+                for ind in range(len(spec.env_vars)):
+                    state_vector2[ind] = cmd_args[1][spec.env_vars[ind]]
+                if len(cmd_args[1]) > len(spec.env_vars):
+                    for ind in range(len(spec.sys_vars)):
+                        state_vector2[len(spec.env_vars)+ind] = cmd_args[1][spec.sys_vars[ind]]
+                f.write(cmd+" ")
+                f.write(" ".join([str(i) for i in state_vector1])+" ")
+                f.write(" ".join([str(i) for i in state_vector2])+"\n")
+            else:
+                raise ValueError("unrecognized command: \""+str(cmd)+"\"")
+
+    with open(spc_filename, "w") as f:
+        f.write(spec.dumpgr1c())
+    aut_in_f = tempfile.TemporaryFile()
+    aut_in_f.write(aut.dumpgr1c(env_vars=spec.env_vars, sys_vars=spec.sys_vars))
+    aut_in_f.seek(0)
+    aut_out_f = tempfile.TemporaryFile()
+    if verbose == 0:
+        args = [GR1C_BIN_PREFIX+"grpatch", "-t", "tulip",
+                "-a", "-", "-e", chg_filename, spc_filename]
+    else:
+        args = [GR1C_BIN_PREFIX+"grpatch", "-l", "-t", "tulip",
+                "-a", "-", "-e", chg_filename, spc_filename]
+    p = subprocess.Popen(args, stdin=aut_in_f, stdout=aut_out_f,
+                         stderr=subprocess.STDOUT)
+    p.wait()
+    aut_out_f.seek(0)
+    if p.returncode == 0:
+        (prob, sys_dyn, patched_aut) = loadXML(aut_out_f.read())
+        return patched_aut
+    else:
+        if verbose > 0:
+            print aut_out_f.read()
+        return None
+
+
+def add_sysgoal(spec, aut, new_sysgoal, metric_vars=None,
+                base_filename="add_sysgoal", verbose=0):
+    """Use an experimental patching algorithm, available through gr1c
+
+    spec is an instance of GRSpec, aut is the nominal strategy
+    automaton, and new_sysgoal is a formula defining a new system
+    goal, given as a string, as would expected of an element in the
+    ``sys_prog`` attribute of the GRSpec class.  If metric_vars is not
+    None, it should be a list of variable names to use in distance
+    computations, where the value of each variable is interpreted as
+    an element of a coordinate in a Euclidean space.
+
+    base_filename is treated as in patch_localfixpoint().
+
+    Return patched strategy, or None if unrealizable (or error).
+    """
+    if metric_vars is None:
+        metric_vars = []
+    spc_filename = base_filename+"_specfile.spc"
+    with open(spc_filename, "w") as f:
+        f.write(spec.dumpgr1c())
+    aut_in_f = tempfile.TemporaryFile()
+    aut_in_f.write(aut.dumpgr1c(env_vars=spec.env_vars, sys_vars=spec.sys_vars))
+    aut_in_f.seek(0)
+    aut_out_f = tempfile.TemporaryFile()
+    if verbose == 0:
+        p = subprocess.Popen([GR1C_BIN_PREFIX+"grpatch", "-t", "tulip",
+                              "-a", "-", "-f", new_sysgoal,
+                              "-m", " ".join(metric_vars), spc_filename],
+                             stdin=aut_in_f,
+                             stdout=aut_out_f, stderr=subprocess.STDOUT)
+    else:
+        p = subprocess.Popen([GR1C_BIN_PREFIX+"grpatch", "-vv", "-l", "-t", "tulip",
+                              "-a", "-", "-f", new_sysgoal,
+                              "-m", " ".join(metric_vars), spc_filename],
+                             stdin=aut_in_f,
+                             stdout=aut_out_f, stderr=subprocess.STDOUT)
+    p.wait()
+    aut_out_f.seek(0)
+    if p.returncode == 0:
+        (prob, sys_dyn, patched_aut) = loadXML(aut_out_f.read())
+        return patched_aut
+    else:
+        if verbose > 0:
+            print aut_out_f.read()
         return None
 
 

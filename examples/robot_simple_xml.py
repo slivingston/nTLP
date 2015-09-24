@@ -34,7 +34,7 @@ smvfile = os.path.join(path, 'specs', testfile+'.smv')
 spcfile = os.path.join(path, 'specs', testfile+'.spc')
 autfile = os.path.join(path, 'specs', testfile+'.aut')
 
-load_from_XML = False
+load_from_XML = True
 if not load_from_XML:
 
     # Environment variables
@@ -130,8 +130,8 @@ states = grsim.grsim([aut], env_states=[init_state], num_it=num_it,
 
 # Store discrete trajectory in np array
 cellid_arr = []
-for (autID, state) in states:
-    cellid_arr.append(state.state['cellID'])
+for (autID, n) in states:
+    cellid_arr.append(aut.node[n]["state"]['cellID'])
 cellid_arr = np.array(cellid_arr)
 
 # First continuous state is middle point of first cell

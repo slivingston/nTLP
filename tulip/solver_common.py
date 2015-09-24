@@ -32,7 +32,6 @@
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $Id$
 # Common components for solvers
 import time, os
 class SolverException(Exception):

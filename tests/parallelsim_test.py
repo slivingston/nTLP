@@ -25,19 +25,19 @@ _thread_timeout = 3  # seconds
 # SYSINIT: y;
 # SYSTRANS:;
 # SYSGOAL: []<>y&x & []<>!y;
-REFERENCE_XMLFRAGMENT = """  <aut>
+REFERENCE_XMLFRAGMENT = """  <aut type="basic">
     <node>
-      <id>0</id><name></name>
+      <id>0</id><anno></anno>
       <child_list>1 2</child_list>
       <state><item key="y" value="0" /><item key="x" value="1" /></state>
     </node>
     <node>
-      <id>1</id><name></name>
+      <id>1</id><anno></anno>
       <child_list>1 2</child_list>
       <state><item key="y" value="0" /><item key="x" value="0" /></state>
     </node>
     <node>
-      <id>2</id><name></name>
+      <id>2</id><anno></anno>
       <child_list>1 0</child_list>
       <state><item key="y" value="1" /><item key="x" value="1" /></state>
     </node>

@@ -1,3 +1,6 @@
-include tulip/jtlv_grgame.jar
-include tulip/matlab/*.m
-include examples/*.py
+include tulip/gephi/README.txt
+include tulip/gephi/org-tulip-automatonsimulation.nbm
+recursive-include benchmark *.py
+include tests/*.py
+recursive-include examples *.py *.yaml
+include tools/*

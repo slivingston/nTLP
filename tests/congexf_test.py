@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 """
-Test code moved here verbatim from bottom of tulip/congexf.py
+Tests based on code from bottom of tulip/congexf.py
 Original code by Yuchen Lin, 2011.
 
-SCL; 31 Dec 2011.
+SCL; 21 August 2011.
 """
 
 from tulip.congexf import * 
-from tulip.automaton import AutomatonState, Automaton
+from tulip.automaton import Automaton
 
 
 # This test should be broken into units.
 def congexf_test():
-    testAutState0 = AutomatonState(id=0, state={'a':0, 'b':1}, transition=[1])
-    testAutState1 = AutomatonState(id=1, state={'a':2, 'b':3}, transition=[0])
-    testAut = Automaton([testAutState0, testAutState1])
+    testAut = Automaton()
+    testAut.addAutState(node_id=0, state={'a':0, 'b':1}, transitions=[1])
+    testAut.addAutState(node_id=1, state={'a':2, 'b':3}, transitions=[0])
     print "Testing tagGexfAttr..."
     assert tagGexfAttr('a', int, 3) == \
            '      <attribute id="a" type="integer" />\n'   
@@ -22,7 +22,7 @@ def congexf_test():
     assert tagGexfAttvalue('a', 0, 5) == \
            '          <attvalue for="a" value="0" />\n'
     print "Testing tagGexfNode..."
-    assert tagGexfNode(0, testAutState0, 'foo', 3) == \
+    assert tagGexfNode(0, 0, testAut.node[0].copy(), 'foo', 3) == \
            '      <node id="0.0" label="foo" pid="0">\n' + \
            '        <attvalues>\n' + \
            '          <attvalue for="a" value="0" />\n' + \
@@ -32,7 +32,8 @@ def congexf_test():
            '      </node>\n'
     
     print "Testing tagGexfEdge..."
-    assert tagGexfEdge(0, testAutState0, 0, testAutState1, 'bar', 3) == \
+    assert tagGexfEdge(0, 0, testAut.node[0].copy(),
+                       0, 1, testAut.node[1].copy(), 'bar', 3) == \
            '      <edge id="0.0-0.1" source="0.0" target="0.1" label="bar">\n' + \
            '        <attvalues>\n' + \
            '          <attvalue for="a" value="2" />\n' + \

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-
 """
 Unit Tests for syntax checking module.
+
+Modified by SCL on 6 May 2013 to mark several tests here as slow.
 """
 
 from tulip import check_spec
@@ -140,112 +141,102 @@ not_okay_guarantee = """[]((z0 = 0) | (z0 = 1) | (z0 = 2))
 
 
 def parentheses_test():
-	"""
-	Checks that the function that tests for parentheses matchng is okay.
-	"""
-	correct_string = '(a (b c) (b s) ((d s) b))'
-	too_many_open = '((a (b c) (b s) ((d s) b))'
-	too_many_close = '(a (b c) (b s) ((d s) b)))'
+    """
+    Checks that the function that tests for parentheses matchng is okay.
+    """
+    correct_string = '(a (b c) (b s) ((d s) b))'
+    too_many_open = '((a (b c) (b s) ((d s) b))'
+    too_many_close = '(a (b c) (b s) ((d s) b)))'
 
-	assert(check_spec.check_parentheses(correct_string))
-	assert(not check_spec.check_parentheses(too_many_open))
-	assert(not check_spec.check_parentheses(too_many_close))
-
-	#print "Passed parentheses test"
-
+    assert(check_spec.check_parentheses(correct_string))
+    assert(not check_spec.check_parentheses(too_many_open))
+    assert(not check_spec.check_parentheses(too_many_close))
 
 
 def check_dict_keys():
-	"""
-	Makes sure that the functions that check keys are working.
-	"""
+    """
+    Makes sure that the functions that check keys are working.
+    """
 
-	# Make sure that a valid dictionary goes through
-	okay_dictionary = {}
-	okay_dictionary['a'] = 'boolean'
-	okay_dictionary['b'] = 'boolean'
-	okay_dictionary['c'] = ['x', 'y', 'z']
-	okay_dictionary['d'] = [1, 2, 3]
-	okay_dictionary['e'] = ['1', '2', '3']
-	okay_dictionary['f'] = '1'
-	okay_dictionary['g'] = 'u'
-	assert(check_spec.check_keys(okay_dictionary))
+    # Make sure that a valid dictionary goes through
+    okay_dictionary = {}
+    okay_dictionary['a'] = 'boolean'
+    okay_dictionary['b'] = 'boolean'
+    okay_dictionary['c'] = ['x', 'y', 'z']
+    okay_dictionary['d'] = [1, 2, 3]
+    okay_dictionary['e'] = ['1', '2', '3']
+    okay_dictionary['f'] = '1'
+    okay_dictionary['g'] = 'u'
+    assert(check_spec.check_keys(okay_dictionary))
 
-	# All keys should be strings. The strings should be words and not integers
-	key_not_okay_dict = {}
-	key_not_okay_dict['a'] = 'boolean'
-	key_not_okay_dict[1] = 'boolean'
-	assert(not check_spec.check_keys(key_not_okay_dict))
+    # All keys should be strings. The strings should be words and not integers
+    key_not_okay_dict = {}
+    key_not_okay_dict['a'] = 'boolean'
+    key_not_okay_dict[1] = 'boolean'
+    assert(not check_spec.check_keys(key_not_okay_dict))
 
-	# Make sure that things like '1' are also not okay. (Alphanumeric okay)
-	key_not_okay_1 = {}
-	key_not_okay_1['a'] = 'boolean'
-	key_not_okay_1['1'] = 'boolean'
-	assert(not check_spec.check_keys(key_not_okay_1))
-
-	#print "Keys test passed"
-
+    # Make sure that things like '1' are also not okay. (Alphanumeric okay)
+    key_not_okay_1 = {}
+    key_not_okay_1['a'] = 'boolean'
+    key_not_okay_1['1'] = 'boolean'
+    assert(not check_spec.check_keys(key_not_okay_1))
 
 
 def check_dict_values():
-	"""
-	Checks that the function that checks that all variables are in the right
-	format is okay.
-	"""
+    """
+    Checks that the function that checks that all variables are in the right
+    format is okay.
+    """
 
-	# Make sure that a valid dictionary goes through.
-	okay_dictionary = {}
-	okay_dictionary['a'] = 'boolean'
-	okay_dictionary['b'] = 'boolean'
-	okay_dictionary['c'] = ['x', 'y', 'z']
-	okay_dictionary['d'] = [1, 2, 3]
-	okay_dictionary['e'] = ['1', '2', '3']
-	okay_dictionary['f'] = '1'
-	okay_dictionary['g'] = 'u'
-	assert(check_spec.check_values(okay_dictionary))
+    # Make sure that a valid dictionary goes through.
+    okay_dictionary = {}
+    okay_dictionary['a'] = 'boolean'
+    okay_dictionary['b'] = 'boolean'
+    okay_dictionary['c'] = ['x', 'y', 'z']
+    okay_dictionary['d'] = [1, 2, 3]
+    okay_dictionary['e'] = ['1', '2', '3']
+    okay_dictionary['f'] = '1'
+    okay_dictionary['g'] = 'u'
+    assert(check_spec.check_values(okay_dictionary))
 
-	# Values should not be alphanumeric.
-	values_not_okay_dict = {}
-	values_not_okay_dict['a'] = 'boolean'
-	values_not_okay_dict['b'] = ['a1', 'a2', 'a3']
-	assert(not check_spec.check_values(values_not_okay_dict))
-
-	#print "Values test passed."
+    # Values should not be alphanumeric.
+    values_not_okay_dict = {}
+    values_not_okay_dict['a'] = 'boolean'
+    values_not_okay_dict['b'] = ['a1', 'a2', 'a3']
+    assert(not check_spec.check_values(values_not_okay_dict))
 
 
 def variable_test():
-	"""
-	Checks that the function that checks to make sure that everything is 
-	spelled correctly.
-	"""
+    """
+    Checks that the function that checks to make sure that everything is 
+    spelled correctly.
+    """
 
-	assert(check_spec.check_vars(okay_assumption, variable_dictionary))
-	assert(not check_spec.check_vars(not_okay_guarantee, variable_dictionary))
+    assert(check_spec.check_vars(okay_assumption, variable_dictionary))
+    assert(not check_spec.check_vars(not_okay_guarantee, variable_dictionary))
 
-	#print "Spelling check passed."
-	
 
 def jtlv_test():
-	assert(check_spec.check_jtlv(okay_assumption, okay_guarantee, 
-	  environment_dictionary, system_dictionary, []))
+    assert(check_spec.check_jtlv(okay_assumption, okay_guarantee, 
+      environment_dictionary, system_dictionary, []))
 
-	#print "GR(1)/JTLV LTL parsing check passed"
+jtlv_test.slow = True
 
 
 def other_test():
-	total_dictionary = dict(system_dictionary.items() + 
-	  environment_dictionary.items())
-	assert(check_spec.check_other(okay_assumption, total_dictionary, []))
+    total_dictionary = dict(system_dictionary.items() + 
+      environment_dictionary.items())
+    assert(check_spec.check_other(okay_assumption, total_dictionary, []))
 
-	LTL_spec = ""
+    LTL_spec = ""
 
-	#print "General LTL parsing check passed."
+other_test.slow = True
 
 
 if __name__ == "__main__":
-	parentheses_test()
-	check_dict_keys()
-	check_dict_values()
-	variable_test()
-	other_test()
-	jtlv_test()
+    parentheses_test()
+    check_dict_keys()
+    check_dict_values()
+    variable_test()
+    other_test()
+    jtlv_test()

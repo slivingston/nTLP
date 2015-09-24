@@ -32,7 +32,6 @@
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $Id$
 # Generic solver interface
 
 from tulip import rhtlp, ltl_parse, nusmvint, spinint, automaton
@@ -258,12 +257,12 @@ class SolverInput:
             aut.loadSMVAut(self.aut_file, [])
         elif self.solver == "SPIN":
             aut.loadSPINAut(self.aut_file, [])
-        for state in aut.states:
+        for n in aut.nodes_iter():
             # Canonical representation
-            for k in state.state.keys():
-                val = state.state[k]
-                del(state.state[k])
-                state.state[self.canonical(k)] = val
+            for k in aut.node[n]["state"].keys():
+                val = aut.node[n]["state"][k]
+                del(aut.node[n]["state"][k])
+                aut.node[n]["state"][self.canonical(k)] = val
         return aut
     
     # Metrics
@@ -399,14 +398,14 @@ def generateSPINInput(*args, **kwargs):
     generateSolverInput(*args, solver='SPIN', **kwargs)
 
 def restore_propositions(aut, pp):
-    for state in aut.states:
+    for n in aut.nodes_iter():
         # translate cellID -> proposition
-        for k in state.state.keys():
+        for k in aut.node[n]["state"].keys():
             var = k.rsplit(".")
             if var[-1] == "cellID":
-                props = pp.reg2props(state.state[k])
+                props = pp.reg2props(aut.node[n]["state"][k])
                 if props:
                     for p in props:
                         var[-1] = p
-                        state.state[".".join(var)] = True
-                    del(state.state[k])
+                        aut.node[n]["state"][".".join(var)] = True
+                    del(aut.node[n]["state"][k])

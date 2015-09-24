@@ -1,26 +1,23 @@
 #!/usr/bin/env python
 """
-Usage: solverand.py [H W]
+Usage: solverand_spin.py [H W]
 
 will generate a random deterministic gridworld problem of the height H
-and width W (default is 5 by 10), try to solve and, if realizable,
-dump a DOT file named "exampledet.dot" depicting the strategy
-automaton.  Example usage for 3 by 5 size is
+and width W (default is 5 by 10), try to solve it using the SPIN
+interface and, if realizable, dump a DOT file named "random_grid.dot"
+depicting the strategy automaton.  Example usage for 3 by 5 size is
 
-  $ ./solverand.py 3 5
-  $ dot -Tpng -O exampledet.dot
+  $ ./solverand_spin.py 3 5
 
 The resulting PNG image built by dot is in the file named
-"exampledet.dot.png" or similar.
-
-
-SCL; 28 June 2012.
+"random_grid.png".  Note that other temporary files also have the base
+name "random_grid".
 """
 
 import sys, time
 import tulip.gridworld as gw
 from tulip import gr1cint
-import tulip.spinint as spinint
+from tulip import solver
 import tulip.automaton as automaton
 from subprocess import call
 
@@ -41,33 +38,26 @@ if __name__ == "__main__":
     print Z
     
     start = time.time()
-    gr1spec = Z.spec()
+    gr1spec = Z.spec(nonbool=False)
     # generate SMV spec from discrete transitions
     print "Generating transition system"
-    pp = Z.discreteTransitionSystem()
-        
+    pp = Z.discreteTransitionSystem(nonbool=False)
+
     print "Assembling progress specification"
     sp = ["[]<>(" + x + ")" for x in gr1spec.sys_prog]
     initials = { k : True for k in [Z[x] for x in Z.init_list]}
-    spinint.generateSPINInput({}, ["", " & ".join(sp)],
-                                    {}, pp, "random_grid.pml", initials)
+    slvi = solver.generateSolverInput({}, ["", " & ".join(sp)],
+                                      {}, pp, "random_grid.pml", initials,
+                                      "SPIN")
 
     print "Computing strategy"
-    if spinint.computeStrategy("random_grid.pml", "random_grid.aut", 1):
+    if slvi.solve("random_grid.aut"):
         print "Writing automaton"
-        aut = automaton.Automaton('', [])
-        aut.loadSPINAut("random_grid.aut", [])
-        for state in aut.states:
-            # translate cellID -> proposition
-            rewrittenState = False
-            for (n, p) in enumerate(pp.list_region[state.state["cellID"]].list_prop):
-                if p:
-                    prop = pp.list_prop_symbol[n]
-                    state.state[prop] = "TRUE"
-                    rewrittenState = True
-            if rewrittenState:
-                del(state.state["cellID"])
-        print Z.pretty(show_grid=True, path=gw.extractPath(aut))
+        aut = slvi.automaton()
+        solver.restore_propositions(aut, pp)
+        aut.stripNames()
+
+        print Z.pretty(show_grid=True, path=gw.extract_path(aut))
         aut.writeDotFile("random_grid.dot", hideZeros=True)
         call("dot random_grid.dot -Tpng -o random_grid.png".split())
     else:

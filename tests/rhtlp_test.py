@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
-Based on test code moved here from bottom of tulip/rhtlputil.py
+...partially based on test code moved here from bottom of tulip/rhtlputil.py.
 
-SCL; 31 Dec 2011.
+SCL; 24 February 2013.
 """
 
 import os
@@ -28,6 +28,22 @@ class yices_test:
         assert yicesSolveSat(expr=expr, allvars=vardict,
                              ysfile=self.ysfile,
                              verbose=3) == (True, "(= a false)\n(= b -15)\n(= x 14)\n")
+
+
+class cvc4_test:
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_small(self):
+        vardict = {'a': 'boolean', 'b': '{0, 2, 3, -15}', 'x': [14, -3]}
+        expr='!a -> (!(b = 2) | b < 0 & x > 0)'
+        # The following assertion may be too fragile because the
+        # witness to satisfiability is not unique.
+        assert cvc4_qf_lia(expr=expr, allvars=vardict) == (True, "((a false) (x (- 3)) (b 3))")
+
 
 def test_evalExpr():
     vardict = {'x':1, 'y':0, 'z':1, 'w':0}

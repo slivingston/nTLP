@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 #
-# Copyright (c) 2011 by California Institute of Technology
+# Copyright (c) 2011, 2013 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,14 +32,12 @@
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $Id$
-#
 #
 #  Acknowledgement:
 #  The overall structure of this library and the functions in the list
 #  below are taken with permission from:
 #
-#  M. Kvasnica, P. Grieder and M. Baoti,
+#  M. Kvasnica, P. Grieder and M. Baotić,
 #  Multi-Parametric Toolbox (MPT),
 #  http://control.ee.ethz.ch/~mpt/
 #
@@ -92,9 +91,18 @@ except:
            reverting to CVXOPT's own solver. This may be slow"
     lp_solver = None
 
-# Hide optimizer output
+# Configure solver verbosity
 solvers.options['show_progress'] = False
-solvers.options['LPX_K_MSGLEV'] = 0
+
+# ...for GLPK (if available); tested with version 4.47 on 2 Apr 2013.
+# See glpk.h in the GLPK source distribution for corresponding
+# definitions of control parameters.
+_GLP_MSG_OFF = 0
+_GLP_MSG_ERR = 1
+_GLP_MSG_ON = 2
+_GLP_MSG_ALL = 3
+_GLP_MSG_DBG = 4
+solvers.options['LPX_K_MSGLEV'] = _GLP_MSG_ERR
 
 # Nicer numpy output
 np.set_printoptions(precision=5, suppress = True)
@@ -188,16 +196,36 @@ class Polytope:
         A = self.A.copy()
         b = self.b.copy()
         P = Polytope(A,b)
-        P.chebXc = self.chebXc
+        if self.chebXc is not None:
+            P.chebXc = self.chebXc.copy()
         P.chebR = self.chebR
         P.minrep = self.minrep
-        P.bbox = self.bbox
+        if self.bbox is not None:
+            P.bbox = (self.bbox[0].copy(), self.bbox[1].copy())
         P.fulldim = self.fulldim
+        if self.vertices is not None:
+            P.vertices = self.vertices.copy()
         return P
 
     def copy(self):
         """Return copy of this Polytope."""
         return self.__copy__()
+
+    def clear(self):
+        """Clear the various cached items.
+
+        Many polytope routines use memoization.  For instance, after
+        computing the bounding box, its value is stored as an
+        attribute and not recomputed if later requested.  Call clear()
+        to delete all cached values.
+        """
+        self.chebXc = None
+        self.chebR = None
+        self.minrep = False
+        self.bbox = None
+        self.fulldim = None
+        self.vertices = None
+
 
 class Region:
     """Class for lists of convex polytopes
@@ -251,7 +279,7 @@ class Region:
 
     def __copy__(self):
         """Return copy of this Region."""
-        return Region(list_poly=self.list_poly[:],
+        return Region(list_poly=[p.copy() for p in self.list_poly],
                       list_prop=self.list_prop[:])
 
     def copy(self):
@@ -1407,7 +1435,7 @@ def region_diff(poly,reg, abs_tol=1e-7, intersect_tol=1e-7):
         beg_mi = np.array([m])
     
     A = np.vstack([A, -A[range(m,m+M),:]])
-    B = np.hstack([B, -B[range(m,m+M),:]])
+    B = np.hstack([B, -B[range(m,m+M)]])
 
     counter = np.zeros([N,1], dtype=int)
     INDICES = np.arange(m, dtype=int)

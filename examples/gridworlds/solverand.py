@@ -14,7 +14,7 @@ The resulting PNG image built by dot is in the file named
 "exampledet.dot.png" or similar.
 
 
-SCL; 28 June 2012.
+SCL; 1 April 2013.
 """
 
 import sys
@@ -37,10 +37,10 @@ if __name__ == "__main__":
                         num_init=1,
                         num_goals=2)
     print Z
-    print "Spec length: " + str(len(Z.spec().dumpgr1c()))
+    print "Spec length (in char): " + str(len(Z.spec().dumpgr1c()))
     
-    if not gr1cint.check_realizable(Z.spec((3,1))):
+    if not gr1cint.check_realizable(Z.spec()):
         print "Not realizable."
     else:
         aut = gr1cint.synthesize(Z.spec())
-        aut.writeDotFile("exampledet.dot", hideZeros=True)
+        aut.writeDotFile("exampledet.dot", hideZeros=True, sys_vars=[Z.prefix+"_r", Z.prefix+"_c"])

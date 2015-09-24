@@ -1,5 +1,3 @@
-# !/usr/bin/env python
-#
 # Copyright (c) 2012 by California Institute of Technology
 # All rights reserved.
 #
@@ -31,13 +29,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
-# 
-# $Id$
-
 """ 
-----------------
 Parallel Simulation Module
-----------------
 """
 
 import sys
@@ -45,7 +38,6 @@ import time, random
 import threading
 
 from tulip import *
-from tulip.automaton import AutomatonState
 from errorprint import printError
 
 
@@ -105,10 +97,10 @@ class Strategy(threading.Thread):
         s0 = dict(filter(lambda (k,v): k in (self.X + self.Y), self.V.iteritems()))
 
         # apply inputs
-        aut_state = self.D.findNextAutState(current_aut_state=None, env_state=s0)
+        aut_node = self.D.findNextAutState(current_aut_state=None, env_state=s0)
 
         # check if initial conditions satisfy assumptions
-        if (aut_state==-1):
+        if (aut_node==-1):
             printError(self.name + ": No transition found.", obj=self)
 
         # CONSECUTION
@@ -116,7 +108,7 @@ class Strategy(threading.Thread):
         while True:
             if self.runtime > 0 and time.time() - start_time > self.runtime:
                 break
-            print '%s %04i\t: %s\n' % (self.name, aut_state.id, str(self.V)),
+            print '%s %04i\t: %s\n' % (self.name, aut_node, str(self.V)),
 
             #sleep for a given time (to emulate different processor frequencies)
             time.sleep(random.uniform(self.Tmin/1000., self.Tmax/1000.))
@@ -125,13 +117,9 @@ class Strategy(threading.Thread):
             inputs = dict(filter(lambda (k,v): k in self.X, self.V.iteritems()))
 
             # apply inputs
-            aut_state = self.D.findNextAutState(current_aut_state=aut_state, env_state=inputs)
-            if (aut_state==-1):
+            aut_node = self.D.findNextAutState(current_aut_state=aut_node, env_state=inputs)
+            if (aut_node==-1):
                 printError(self.name + ": No transition found.", obj=self)
 
-            # check environment assumptions
-            if(not isinstance(aut_state, AutomatonState)):
-                printError(self.name + ": The environment violated its assumptions.", obj=self)
-
             # write system variables
-            map(lambda (k,v): self.V.update({k:v}), dict(filter(lambda (k,v): k in self.Y, aut_state.state.iteritems())).iteritems())
+            map(lambda (k,v): self.V.update({k:v}), dict(filter(lambda (k,v): k in self.Y, self.D.node[aut_node]["state"].iteritems())).iteritems())

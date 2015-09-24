@@ -32,7 +32,6 @@
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $Id$
 # NuSMV interface
 import rhtlp, os, ltl_parse, time, copy, threading
 from subprocess import Popen, PIPE, STDOUT

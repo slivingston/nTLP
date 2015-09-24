@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # Copyright (c) 2011, 2012 by California Institute of Technology
 # All rights reserved.
 #
@@ -31,8 +29,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
-# 
-# $Id$
 """ 
 ------------------------------------
 Jtlvint Module --- Interface to JTLV

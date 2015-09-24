@@ -18,19 +18,19 @@ for these with::
 
   $ ls /usr/bin/python*
 
-The following packages are also *required*: `NumPy
-<http://numpy.org/>`_, `SciPy <http://www.scipy.org/>`_, `CVXOPT
-<http://abel.ee.ucla.edu/cvxopt/>`_, `pyparsing
-<http://pyparsing.wikispaces.com/>`_, and `matplotlib
-<http://matplotlib.sourceforge.net/>`_ (at least version 1.1).  Except
-for python-graph, these packages are quite standard in scientific
-computing environments and may already be installed.  To check, open a
-new terminal and try::
+The following packages are also *required*: `NumPy <http://numpy.org/>`_, `SciPy
+<http://www.scipy.org/>`_, `CVXOPT <http://abel.ee.ucla.edu/cvxopt/>`_,
+`pyparsing <http://pyparsing.wikispaces.com/>`_, `NetworkX
+<http://networkx.lanl.gov/>`_, and `matplotlib
+<http://matplotlib.sourceforge.net/>`_ (at least version 1.1).  These packages
+are quite standard in scientific computing environments and may already be
+installed.  To check, open a new terminal and try::
 
   $ python -c 'import numpy'
   $ python -c 'import scipy'
   $ python -c 'import cvxopt'
   $ python -c 'import pyparsing'
+  $ python -c 'import networkx'
   $ python -c 'import matplotlib; print matplotlib.__version__'
 
 If an error message occurs, the package might not be visible on the
@@ -39,13 +39,6 @@ cause the version of Matplotlib to be printed.  More or less that
 approach can be used to easily find the installed versions for other
 packages.  Try to install them yourself, or see
 :ref:`troubleshoot-sec-label` below for help.
-
-`python-graph <http://code.google.com/p/python-graph/>`_ is not
-required for most uses of TuLiP, but a few methods of the Automaton
-class will be unavailable if python-graph is not found. To check if
-you already have it, try::
-
-  $ python -c 'import pygraph'
 
 The default GR[1] synthesis tool used by TuLiP is implemented in `JTLV
 <http://jtlv.ysaar.net/>`_. To use it, you must have Java version 1.6
@@ -61,12 +54,11 @@ and which version is installed, try::
 
   $ gr1c -V
 
-For receding horizon problems, you will need a tool for checking
-satisfiability.  At present only `Yices <http://yices.csl.sri.com/>`_
-is supported, so you must install it.  Once this is done, check that
-it is on the shell path with::
+For receding horizon problems, you will need a tool for checking satisfiability.
+At present `CVC4 <http://cvc4.cs.nyu.edu/>`_ is supported.  Check that it is on
+the shell path with::
 
-  $ yices -V
+  $ cvc4 -V
 
 which will return the installed version number.
 
@@ -129,32 +121,6 @@ To check if Gephi is on your path, try::
 If this returns nothing, then you should add Gephi to your path. On Mac OS X, you can do this, for instance, by following the instructions from `this webpage <http://keito.me/tutorials/macosx_path>`_ where YOURPATHHERE should be set to the directory where Gephi is located on your machine. It is typically located under ``/Applications/gephi.app/Contents/MacOS/``.
 
 
-MPT
-```
-
-In earlier versions of TuLiP polytope computations while dealing with
-continuous state spaces were achieved with `MPT
-<http://control.ee.ethz.ch/~mpt/>`_ (the Multi-Parametric Toolbox), a
-`Matlab <http://www.mathworks.com/products/matlab/>`_ toolbox.  Current
-release has an alternative implementation that does not require Matlab
-or MPT. However, if you are going to use older version with MPT,
-then its location must be added to the Matlab search path and it must
-be initialized.  You can achieve both steps automatically each time
-Matlab is opened by adding the following lines to your ``startup.m``
-file::
-
-  addpath(genpath('/path/to/mpt'));
-  mpt_init;
-
-where "/path/to/mpt" should be replaced with the location where you
-placed MPT.  On Ubuntu GNU/Linux 11.04, running a default installation
-of Matlab R2010a, ``startup.m`` is located under
-``~/Documents/MATLAB/`` [#f1]_.  If there is no ``startup.m`` file
-present, you can create one; try an empty file with the above lines
-(and the mpt path suitably modified). To begin using MPT, 
-set the flag ``use_mpt`` to True where appropriate.
-
-
 .. _troubleshoot-sec-label:
 
 Troubleshooting
@@ -188,7 +154,7 @@ Ubuntu (or Debian) GNU/Linux
 
 To install the python package dependencies, try::
 
-  $ sudo apt-get install python-numpy python-scipy python-matplotlib python-cvxopt
+  $ sudo apt-get install python-numpy python-scipy python-matplotlib python-cvxopt python-networkx
 
 Mac OS X
 ````````
@@ -197,17 +163,6 @@ For installing SciPy, NumPy, and Matplotlib, consider trying
 `Scipy Superpack for Mac OSX
 <http://fonnesbeck.github.com/ScipySuperpack/>`_ by Chris Fonnesbeck.
 
-**If you are using MPT**, make sure you launch MATLAB from the command
-line in the shell and set up MPT from there to avoid problems when
-running examples with continuous dynamics.
-
-If you launch MATLAB through a short-cut and setup MPT that way, even
-if it looks as if it gets installed correctly, it won't work when you
-launch MATLAB from the terminal later on (they just use different path
-definitions in startup). Hence, when you call MPT within TuLiP, you
-will get an error if you did not use terminal while setting up
-MPT.
-`The details of the issue from Mathworks. <http://www.mathworks.com/support/solutions/en/data/1-Q4J2R/index.html?product=ML&solution=1-Q4J2R>`_
 
 Microsoft Windows
 `````````````````
@@ -222,20 +177,12 @@ To check whether the packages has been installed, open a new terminal and try::
   import numpy
   import scipy
   import cvxopt
+  import networkx
   import matplotlib
 
 If an error message occurs, the package might not be visible on the current path or may not be installed at all. When you cannot find a suitable package of NumPy, SciPy, CVXOPT, and Matplotlib for your system, consider trying `Unofficial Windows Binaries for Python Extension Packages <http://www.lfd.uci.edu/~gohlke/pythonlibs/>`_ by Christoph Gohlke. 
 
 The package of Gr1c for Windows still cannot be found. But without this package, you can also run most TuLiP functions.
-
-Installing other Python dependencies
-````````````````````````````````````
-
-The command ``pip install ...`` or ``easy_install ...`` will usually
-suffice. To get `python-graph
-<http://code.google.com/p/python-graph/>`_, try::
-
-  $ easy_install python-graph-core
 
 .. _venv-pydoc-sec-label:
 

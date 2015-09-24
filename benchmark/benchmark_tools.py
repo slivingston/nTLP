@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2011, 2012 by California Institute of Technology
+# Copyright (c) 2011-2013 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -113,7 +113,7 @@ def solve_paths(Z, instances=1, solv="NuSMV", slvi=None, verbose=0):
     if not rlz:
         return (slvi, None)
     aut = slvi.automaton()
-    solver.restore_propositions(aut, Z.discreteTransitionSystem())
+    solver.restore_propositions(aut, Z.discreteTransitionSystem(nonbool=False))
     paths = []
     for m in slvi.modules:
         if  m["instances"] > 1:
@@ -126,7 +126,7 @@ def solve_paths(Z, instances=1, solv="NuSMV", slvi=None, verbose=0):
     return (slvi, paths)
     
 def moving_obstacle_model(obst_path, Z, regions, symbols):
-    c2r = lambda x: solver.prop2reg(Z[x], regions, symbols)
+    c2r = lambda x: solver.prop2reg(Z.__getitem__(x, nonbool=False), regions, symbols)
     obst_init = { "cellID" : c2r(obst_path[0]) }
     obst_trans = Z.deterministicMovingObstacle(obst_path)
     obst_vars = { "cellID" : "{" + ", ".join(str(c2r(c)) for c in obst_path) + "}" }
@@ -136,26 +136,26 @@ def gridworld_model(Z, goal_sequence=False, sp=None):
     if sp is None:
         sp = []
     
-    initials = { Z[x] : True for x in Z.init_list }
-    sp.extend([ "[]<>(%s)" % Z[x] for x in Z.goal_list ])
+    initials = { Z.__getitem__(x, nonbool=False) : True for x in Z.init_list }
+    sp.extend([ "[]<>(%s)" % Z.__getitem__(x, nonbool=False) for x in Z.goal_list ])
     discvars = {}
     
     if goal_sequence:
         # Goal sequencing
         sp.append("(goal = 0)")
         for (n,g) in enumerate(Z.goal_list):
-            sp.append("[]((goal != %d) | <>(%s))" % (n, Z[g]))
+            sp.append("[]((goal != %d) | <>(%s))" % (n, Z.__getitem__(g, nonbool=False)))
             sp.append("[](goal = %d -> (next(goal = %d) | (%s & next(goal = %d))))"
-                        % (n, n, Z[g], n+1))
+                        % (n, n, Z.__getitem__(g, nonbool=False), n+1))
             # Avoid this goal when looking for another
-            sp.append("[]((goal != %d) -> !%s)" % (n, Z[g]))
+            sp.append("[]((goal != %d) -> !%s)" % (n, Z.__getitem__(g, nonbool=False)))
         # Reset goal count
         sp.append("[](goal = %d -> next(goal = 0))" % len(Z.goal_list))
         # Progress for 'goal': eventually reach all goals in order
         sp.append("[]<>(goal = %d)" % len(Z.goal_list))
         discvars = {"goal" : "{0...%d}" % len(Z.goal_list)}
     
-    pp = Z.discreteTransitionSystem()
+    pp = Z.discreteTransitionSystem(nonbool=False)
     gwmodel = solver.discDynamicsModel(discvars, ["", " & ".join(sp)],
                 {}, pp, initials)
     return (gwmodel, pp)
@@ -199,7 +199,7 @@ def gridworld_solve_data(slvi, Z, opts):
     if slvi.realized:
         aut = slvi.automaton()
         aut_size = len(aut)
-        pp = Z.discreteTransitionSystem()
+        pp = Z.discreteTransitionSystem(nonbool=False)
         solver.restore_propositions(aut, pp)
         if opts["num_robots"] > 1:
                 paths = [gw.extract_path(aut, "grid_%d" % n) for n in range(opts["num_robots"])]

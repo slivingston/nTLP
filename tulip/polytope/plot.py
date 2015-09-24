@@ -1,5 +1,4 @@
-#
-# Copyright (c) 2011 by California Institute of Technology
+# Copyright (c) 2011, 2012 by California Institute of Technology
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,9 +29,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
-#
-# $Id$
-
 """
 Functions for plotting Polytopes and Partitions. The functions
 can be accessed by
@@ -52,7 +48,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 
-from polytope import dimension, extreme, cheby_ball, bounding_box, is_fulldim
+from polytope import dimension, extreme, cheby_ball, bounding_box, is_fulldim, Polytope, Region
 
 def get_patch(poly1, color="blue"):
     """Takes a Polytope and returns a Matplotlib Patch Polytope 
@@ -60,17 +56,17 @@ def get_patch(poly1, color="blue"):
     
     Example::
 
-    > # Plot Polytope objects poly1 and poly2 in the same plot
-    > import matplotlib.pyplot as plt
-    > fig = plt.figure()
-    > ax = fig.add_subplot(111)
-    > p1 = get_patch(poly1, color="blue")
-    > p2 = get_patch(poly2, color="yellow")
-    > ax.add_patch(p1)
-    > ax.add_patch(p2)
-    > ax.set_xlim(xl, xu) # Optional: set axis max/min
-    > ax.set_ylim(yl, yu) 
-    > plt.show()
+        > # Plot Polytope objects poly1 and poly2 in the same plot
+        > import matplotlib.pyplot as plt
+        > fig = plt.figure()
+        > ax = fig.add_subplot(111)
+        > p1 = get_patch(poly1, color="blue")
+        > p2 = get_patch(poly2, color="yellow")
+        > ax.add_patch(p1)
+        > ax.add_patch(p2)
+        > ax.set_xlim(xl, xu) # Optional: set axis max/min
+        > ax.set_ylim(yl, yu) 
+        > plt.show()
     """
     V = extreme(poly1)
     rc,xc = cheby_ball(poly1)
@@ -87,46 +83,73 @@ def get_patch(poly1, color="blue"):
     return patch
     
 def plot(poly1, show=True):
-    """Plots a 2D polytope or a region using matplotlib.
+    """Plots a 2D polytope or a region, or a list of these, using matplotlib.
     
     Input:
-    - `poly1`: Polytope or Region
+    - `poly1`: Polytope or Region, or list of these objects; the list
+               can contain mixed types.
     """
-    if is_fulldim(poly1):
-        
-        if dimension(poly1) != 2:
-            print "Can not plot polytopes of dimension larger than 2"
-            return
-        
-        if len(poly1) == 0:
-    
-            poly = get_patch(poly1)
-            l,u = bounding_box(poly1)
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            ax.add_patch(poly)        
-        
-            ax.set_xlim(l[0,0],u[0,0])
-            ax.set_ylim(l[1,0],u[1,0])
-            if show:
-                plt.show()
-        
+    if isinstance(poly1, (Polytope, Region)):
+        poly1 = [poly1]  # Wrap argument into a list to simplify code below
+    if len(poly1) < 1:
+        return
+    bounds_unset = True
+    min_l = None
+    max_u = None
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    for pr_item in poly1:
+        if is_fulldim(pr_item):
+            if dimension(pr_item) != 2:
+                print "Cannot plot polytopes of dimension larger than 2"
+                return
+
+            if isinstance(pr_item, Polytope):
+                poly = get_patch(pr_item, color=np.random.rand(3))
+                l,u = bounding_box(pr_item)
+                if bounds_unset:
+                    min_l = l.copy()
+                    max_u = u.copy()
+                    bounds_unset = False
+                else:
+                    if l[0,0] < min_l[0,0]:
+                        min_l[0,0] = l[0,0]
+                    if l[1,0] < min_l[1,0]:
+                        min_l[1,0] = l[1,0]
+                    if u[0,0] > max_u[0,0]:
+                        max_u[0,0] = u[0,0]
+                    if u[1,0] > max_u[1,0]:
+                        max_u[1,0] = u[1,0]
+                ax.add_patch(poly)        
+
+            else:
+                l,u = bounding_box(pr_item)
+                if bounds_unset:
+                    min_l = l.copy()
+                    max_u = u.copy()
+                    bounds_unset = False
+                else:
+                    if l[0,0] < min_l[0,0]:
+                        min_l[0,0] = l[0,0]
+                    if l[1,0] < min_l[1,0]:
+                        min_l[1,0] = l[1,0]
+                    if u[0,0] > max_u[0,0]:
+                        max_u[0,0] = u[0,0]
+                    if u[1,0] > max_u[1,0]:
+                        max_u[1,0] = u[1,0]
+                for poly2 in pr_item.list_poly:
+                    poly = get_patch(poly2, color=np.random.rand(3))
+                    ax.add_patch(poly)
+
         else:
-            l,u = bounding_box(poly1)
-        
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-                
-            for poly2 in poly1.list_poly:
-                poly = get_patch(poly2, color=np.random.rand(3))
-                ax.add_patch(poly)
-        
-            ax.set_xlim(l[0,0],u[0,0])
-            ax.set_ylim(l[1,0],u[1,0])
-            if show:
-                plt.show()
-    else:
-        print "Cannot plot empty polytope"
+            print "Cannot plot empty polytope"
+
+    if bounds_unset:
+        return  # Nothing was plotted
+    ax.set_xlim(min_l[0,0],max_u[0,0])
+    ax.set_ylim(min_l[1,0],max_u[1,0])
+    if show:
+        plt.show()
         
 def plot_partition(ppp, plot_transitions=False, plot_numbers=True, show=True):
     """Plots a 2D PropPreservingPartition object using matplotlib
