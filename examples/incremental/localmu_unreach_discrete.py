@@ -43,7 +43,7 @@ if __name__ == "__main__":
     (spec, moves_N) = gw.add_trolls(Y, [((1,16),1)], nonbool=NONBOOL)
 
     orig_prof = Profile()
-    orig_prof.run("aut = gr1cint.synthesize(spec, verbose=1)")
+    orig_prof.run("aut = gr1cint.synthesize(spec)")
     ind = -1
     while not hasattr(orig_prof.getstats()[ind].code, "co_name") or (orig_prof.getstats()[ind].code.co_name != "synthesize"):
         ind -= 1

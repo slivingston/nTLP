@@ -81,8 +81,8 @@ if __name__ == "__main__":
     spec.importDiscDynamics(disc_dynamics)
 
     # Check realizability and compute an automaton
-    realizability = gr1cint.check_realizable(spec, verbose=1)
-    aut = gr1cint.synthesize(spec, verbose=1)
+    realizability = gr1cint.check_realizable(spec)
+    aut = gr1cint.synthesize(spec)
 
     
     # Simulate

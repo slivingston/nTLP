@@ -100,14 +100,14 @@ if __name__ == "__main__":
     cells = dict([(k,v.list_poly[0]) for (k,v) in cells.items()])
 
     # Check realizability and compute an automaton
-    if gr1cint.check_realizable(spec, verbose=1):
+    if gr1cint.check_realizable(spec):
         print "Realizable.  Synthesizing..."
     else:
         print "Not realizable."
         exit(-1)
     
     orig_prof = Profile()
-    orig_prof.run("aut = gr1cint.synthesize(spec, verbose=1)")
+    orig_prof.run("aut = gr1cint.synthesize(spec)")
     ind = -1
     while not hasattr(orig_prof.getstats()[ind].code, "co_name") or (orig_prof.getstats()[ind].code.co_name != "synthesize"):
         ind -= 1

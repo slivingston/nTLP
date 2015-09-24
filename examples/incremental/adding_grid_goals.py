@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 """
+Small demo of add_sysgoal applied to gridworlds.
 
-SCL; 18 Apr 2013.
+SCL; 2 Feb 2014.
 """
 
+import time
 import sys
 import tulip.gridworld as gw
 from tulip.gr1cint import add_sysgoal, synthesize
@@ -56,7 +58,7 @@ if __name__ == "__main__":
 
     # Add the first new goal
     aut_patched = add_sysgoal(spec, aut, Z[new_goals[0][0],new_goals[0][1]],
-                              metric_vars=spec.sys_vars, verbose=1)
+                              metric_vars=spec.sys_vars)
     if aut_patched is None:
         print "Patching failed."
     else:
@@ -67,7 +69,7 @@ if __name__ == "__main__":
     # Add the second new goal
     spec.sys_prog.append(Z[new_goals[0][0],new_goals[0][1]])
     aut_patched2 = add_sysgoal(spec, aut_patched, Z[new_goals[1][0],new_goals[1][1]],
-                               metric_vars=spec.sys_vars, verbose=1)
+                               metric_vars=spec.sys_vars)
     if aut_patched2 is None:
         print "Patching failed."
     else:
