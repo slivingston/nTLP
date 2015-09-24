@@ -593,14 +593,14 @@ class Automaton(nx.DiGraph):
     def dumpgr1c(self, env_vars, sys_vars):
         """Return string conforming to "gr1c automaton" format.
         """
-        output = ""
+        output = "1\n"  # version 1 of the format
         for (node, label) in self.nodes_iter(data=True):
             output += str(node)
             for v in env_vars:
                 output += " "+str(label["state"][v])
             for v in sys_vars:
                 output += " "+str(label["state"][v])
-            output += " "+str(label["mode"])+" "+str(label["rgrad"])
+            output += " "+str(label["initial"])+" "+str(label["mode"])+" "+str(label["rgrad"])
             for out_node in self.successors_iter(node):
                 output += " "+str(out_node)
             output += "\n"
@@ -688,6 +688,7 @@ class Automaton(nx.DiGraph):
         A = nx.DiGraph()
         for node in node_list:
             this_id = int(node.find(ns_prefix+"id").text)
+            logger.debug("Automaton.loadXML: parsing node with ID "+str(this_id))
             if version == 0:
                 this_name = node.find(ns_prefix+"name").text
                 (tag_name, this_name_list) = conxml.untaglist(node.find(ns_prefix+"name"),
@@ -726,6 +727,35 @@ class Automaton(nx.DiGraph):
         self.add_edges_from(A.edges())
         return True
 
+    def loadJSON(self, json_aut):
+        """gr1c JSON format"""
+
+        A = Automaton()
+        id_map = dict()
+        for i, node_ID in enumerate(json_aut["nodes"].iterkeys()):
+            id_map[node_ID] = i
+        for node_ID in json_aut["nodes"].iterkeys():
+            node_label = dict([(k, json_aut["nodes"][node_ID][k]) \
+                               for k in ("mode", "rgrad")])
+            node_label["initial"] = 1 if json_aut["nodes"][node_ID]["initial"] else 0
+            node_label["state"] = dict()
+            i = 0
+            for ev in json_aut["ENV"]:
+                node_label["state"][ev.keys()[0]] = json_aut["nodes"][node_ID]["state"][i]
+                i += 1
+            for sv in json_aut["SYS"]:
+                node_label["state"][sv.keys()[0]] = json_aut["nodes"][node_ID]["state"][i]
+                i += 1
+            A.add_node(id_map[node_ID], node_label)
+        for node_id in json_aut["nodes"].iterkeys():
+            for to_node in json_aut["nodes"][node_id]["trans"]:
+                A.add_edge(id_map[node_id], id_map[to_node])
+
+        # Finally, commit
+        self.clear()
+        self.add_nodes_from(A.nodes(data=True))
+        self.add_edges_from(A.edges())
+        return True
 
     def size(self):
         return self.__len__()

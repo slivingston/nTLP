@@ -51,8 +51,10 @@ import copy
 import subprocess
 import tempfile
 import os
+import json
 
 from conxml import loadXML
+from automaton import Automaton
 from spec import GRSpec
 
 import logging
@@ -159,12 +161,14 @@ def synthesize(spec, toollog=1):
         log_settings = ["-l"]
     else:
         log_settings = ["-l", "-vv"]
-    p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "-t", "tulip"]+log_settings,
+    p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "-t", "json"]+log_settings,
                          stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     (stdoutdata, stderrdata) = p.communicate(spec.dumpgr1c())
     if p.returncode == 0:
-        (prob, sys_dyn, aut) = loadXML(stdoutdata)
+        json_aut = json.loads(stdoutdata)
+        aut = Automaton()
+        aut.loadJSON(json_aut)
         return aut
     else:
         if toollog > 0:
@@ -254,14 +258,16 @@ def patch_localfixpoint(spec, aut, N, change_list,
     aut_out_f = tempfile.TemporaryFile()
     p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "patch"] \
                          +log_settings \
-                         +["-t", "tulip", "-a", "-", "-e", chg_filename,
+                         +["-t", "json", "-a", "-", "-e", chg_filename,
                            spc_filename],
                          stdin=aut_in_f, stdout=aut_out_f,
                          stderr=subprocess.STDOUT)
     p.wait()
     aut_out_f.seek(0)
     if p.returncode == 0:
-        (prob, sys_dyn, patched_aut) = loadXML(aut_out_f.read())
+        json_aut = json.loads(aut_out_f.read())
+        patched_aut = Automaton()
+        patched_aut.loadJSON(json_aut)
         return patched_aut
     else:
         if toollog > 0:
@@ -304,7 +310,7 @@ def add_sysgoal(spec, aut, new_sysgoal, metric_vars=None,
     aut_out_f = tempfile.TemporaryFile()
     p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "patch"] \
                          +log_settings \
-                         +["-t", "tulip", "-a", "-", "-f", new_sysgoal,
+                         +["-t", "json", "-a", "-", "-f", new_sysgoal,
                            "-m", " ".join(metric_vars), spc_filename],
                          stdin=aut_in_f,
                          stdout=aut_out_f, stderr=subprocess.STDOUT)
@@ -312,7 +318,47 @@ def add_sysgoal(spec, aut, new_sysgoal, metric_vars=None,
     p.wait()
     aut_out_f.seek(0)
     if p.returncode == 0:
-        (prob, sys_dyn, patched_aut) = loadXML(aut_out_f.read())
+        json_aut = json.loads(aut_out_f.read())
+        patched_aut = Automaton()
+        patched_aut.loadJSON(json_aut)
+        return patched_aut
+    else:
+        if toollog > 0:
+            logger.debug(aut_out_f.read())
+        return None
+
+
+def rm_sysgoal(spec, aut, delete_index, base_filename="rm_sysgoal", toollog=1):
+    if toollog < 0:
+        raise ValueError("Argument toollog must be nonnegative")
+    if toollog == 0:
+        log_settings = []
+    elif toollog == 1:
+        log_settings = ["-l"]
+    else:
+        log_settings = ["-l", "-vv"]
+    spc_filename = base_filename+"_specfile.spc"
+    with open(spc_filename, "w") as f:
+        f.write(spec.dumpgr1c())
+    aut_in_f = tempfile.TemporaryFile()
+    aut_in_f.write(aut.dumpgr1c(env_vars=spec.env_vars, sys_vars=spec.sys_vars))
+    aut_in_f.seek(0)
+    aut_out_f = tempfile.TemporaryFile()
+    p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "patch"] \
+                         +log_settings \
+                         +["-t", "json", "-a", "-", "-r", str(delete_index),
+                           spc_filename],
+                         stdin=aut_in_f,
+                         stdout=aut_out_f, stderr=subprocess.STDOUT)
+
+    p.wait()
+    aut_out_f.seek(0)
+    if p.returncode == 0:
+        aut_out_json = aut_out_f.read()
+        logger.debug("rm_sysgoal received from grpatch:\n"+aut_out_json)
+        json_aut = json.loads(aut_out_json)
+        patched_aut = Automaton()
+        patched_aut.loadJSON(json_aut)
         return patched_aut
     else:
         if toollog > 0:
