@@ -12,8 +12,8 @@ def check_gr1c():
     import subprocess
     try:
         subprocess.call(["gr1c", "-V"], stdout=subprocess.PIPE)
-        subprocess.call(["rg", "-V"], stdout=subprocess.PIPE)
-        subprocess.call(["grpatch", "-V"], stdout=subprocess.PIPE)
+        subprocess.call(["gr1c", "rg", "-V"], stdout=subprocess.PIPE)
+        subprocess.call(["gr1c", "patch", "-V"], stdout=subprocess.PIPE)
     except OSError:
         return False
     return True
@@ -31,15 +31,6 @@ def check_cvc4():
                            stdout=subprocess.PIPE, close_fds=True)
     for line in cmd.stdout:
         if 'cvc4' in line:
-            return True
-    return False
-
-def check_yices():
-    import subprocess
-    cmd = subprocess.Popen(['which', 'yices'],
-                           stdout=subprocess.PIPE, close_fds=True)
-    for line in cmd.stdout:
-        if 'yices' in line:
             return True
     return False
 
@@ -85,7 +76,6 @@ optionals = {'glpk' : [check_glpk, 'GLPK found.', 'GLPK seems to be missing\nand
              'gephi' : [check_gephi, 'Gephi found.', 'Gephi seems to be missing. If you\'re interested in graph visualization, see http://gephi.org/'],
              'gr1c' : [check_gr1c, 'gr1c found.', 'gr1c, rg, or grpatch not found.\nIf you\'re interested in a GR(1) synthesis tool besides JTLV, see http://scottman.net/2012/gr1c'],
              'PyYAML' : [check_yaml, 'PyYAML found.', 'PyYAML not found.\nTo read/write YAML, you will need to install PyYAML; see http://pyyaml.org/'],
-             'yices' : [check_yices, 'Yices found.', 'Yices not found.'],
              'cvc4' : [check_cvc4, 'CVC4 found.', 'The SMT solver CVC4 was not found; see http://cvc4.cs.nyu.edu/\nSome functions in the rhtlp module will be unavailable.']}
 
 import sys
@@ -167,5 +157,5 @@ if perform_setup:
           requires = ['numpy', 'scipy', 'cvxopt', 'matplotlib'],
           packages = ['tulip'],
           package_dir = {'tulip' : 'tulip'},
-          package_data={'tulip': ['jtlv_grgame.jar', 'polytope/*.py']}
+          package_data={'tulip': ['polytope/*.py']}
           )
