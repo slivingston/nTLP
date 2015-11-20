@@ -62,18 +62,24 @@ if __name__ == "__main__":
     outfilename = "simdata_localmu_unreach-"+time.strftime("%Y%m%d-%H%M%S", time.gmtime())+".pickle"
     print "Results will be saved to "+outfilename+"..."
 
-    total_it = 20
-    max_radius = 3
+    total_it = 100
+    max_radius = 5
     (num_rows, num_cols) = (32, 32)
+    num_trolls = 2
     find_blockedcell_timeout = 30  # seconds
 
     simdata = []
     num_it = 0
     while num_it < total_it:
         Y = gw.random_world((num_rows, num_cols),
-                            wall_density=.2, num_init=1, num_goals=10,
-                            num_trolls=1, prefix="Y")
-        (spec, moves_N) = Y.mspec(get_moves_lists=True)
+                            wall_density=0.2, num_init=1, num_goals=5,
+                            num_trolls=num_trolls, prefix="Y")
+        if num_trolls == 0:
+            Y.troll_list = []
+            spec = Y.mspec()
+            moves_N = []
+        else:
+            (spec, moves_N) = Y.mspec(get_moves_lists=True)
         if not gr1cint.check_realizable(spec):
             print "o",
             continue
@@ -98,21 +104,25 @@ if __name__ == "__main__":
         Y_reglobal = Y.copy()
         Y_reglobal.setOccupied(blocked_cell)
         global_prof = Profile()
-        (spec_reglobal, moves_N_reglobal) = Y_reglobal.mspec(get_moves_lists=True)
-        global_prof.run("aut = gr1cint.synthesize(spec_reglobal)")
-        ind = -1
-        while not hasattr(global_prof.getstats()[ind].code, "co_name") or (global_prof.getstats()[ind].code.co_name != "synthesize"):
-            ind -= 1
-        globaltime = global_prof.getstats()[ind].totaltime
-
+        if num_trolls == 0:
+            spec_reglobal = Y_reglobal.mspec()
+        else:
+            (spec_reglobal, moves_N_reglobal) = Y_reglobal.mspec(get_moves_lists=True)
         if not gr1cint.check_realizable(spec_reglobal):
             print "b",
             continue
         num_it += 1
 
+        print "Trial "+str(num_it)
         print Y
         print Y.troll_list
         print "Blocked cell: "+str(blocked_cell)
+
+        global_prof.run("gr1cint.synthesize(spec_reglobal)")
+        ind = -1
+        while not hasattr(global_prof.getstats()[ind].code, "co_name") or (global_prof.getstats()[ind].code.co_name != "synthesize"):
+            ind -= 1
+        globaltime = global_prof.getstats()[ind].totaltime
 
         st = time.time()
         for radius in range(1,max_radius+1):

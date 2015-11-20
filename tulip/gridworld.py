@@ -1328,7 +1328,7 @@ def add_trolls(Y, troll_list, prefix="X", start_anywhere=False, nonbool=True,
             moves_N.append([])
             for i in range(t_size[0]):
                 for j in range(t_size[1]):
-                    moves_N[-1].append(X[-1][1].state((i,j), offset=t_offset, nonbool=nonbool))
+                    moves_N[-1].append(X[-1][1].state((i,j), nonbool=nonbool))
 
     spec = GRSpec()
     spec.importGridWorld(Y, controlled_dyn=True, nonbool=nonbool)

@@ -92,7 +92,7 @@ def check_syntax(spec_str, toollog=1):
         return False
 
 
-def check_realizable(spec, toollog=1):
+def check_realizable(spec, toollog=0):
     """Decide realizability of specification defined by given GRSpec object.
 
     Return True if realizable, False if not, or an error occurs.
@@ -147,7 +147,7 @@ def synthesize_reachgame(spec, toollog=1):
         return None
 
 
-def synthesize(spec, toollog=1):
+def synthesize(spec, toollog=0):
     """Synthesize strategy.
 
     Return strategy as instance of Automaton class, or None if
@@ -176,7 +176,7 @@ def synthesize(spec, toollog=1):
         return None
 
 def patch_localfixpoint(spec, aut, N, change_list,
-                        base_filename="patch_localfixpoint", toollog=1):
+                        base_filename="patch_localfixpoint", toollog=0):
     """Use an experimental patching algorithm, available through gr1c.
 
       S.C. Livingston, P. Prabhakar, A.B. Jose, R.M. Murray.
@@ -276,7 +276,7 @@ def patch_localfixpoint(spec, aut, N, change_list,
 
 
 def add_sysgoal(spec, aut, new_sysgoal, metric_vars=None,
-                base_filename="add_sysgoal", toollog=1):
+                base_filename="add_sysgoal", toollog=0):
     """Use an experimental patching algorithm, available through gr1c
 
     spec is an instance of GRSpec, aut is the nominal strategy
@@ -300,7 +300,9 @@ def add_sysgoal(spec, aut, new_sysgoal, metric_vars=None,
     else:
         log_settings = ["-l", "-vv"]
     if metric_vars is None:
-        metric_vars = []
+        metric_vars_switch = []
+    else:
+        metric_vars_switch = ["-m", " ".join(metric_vars)]
     spc_filename = base_filename+"_specfile.spc"
     with open(spc_filename, "w") as f:
         f.write(spec.dumpgr1c())
@@ -310,8 +312,8 @@ def add_sysgoal(spec, aut, new_sysgoal, metric_vars=None,
     aut_out_f = tempfile.TemporaryFile()
     p = subprocess.Popen([GR1C_BIN_PREFIX+"gr1c", "patch"] \
                          +log_settings \
-                         +["-t", "json", "-a", "-", "-f", new_sysgoal,
-                           "-m", " ".join(metric_vars), spc_filename],
+                         +["-t", "json", "-a", "-", "-f", new_sysgoal]
+                         +metric_vars_switch+[spc_filename],
                          stdin=aut_in_f,
                          stdout=aut_out_f, stderr=subprocess.STDOUT)
 
@@ -328,7 +330,7 @@ def add_sysgoal(spec, aut, new_sysgoal, metric_vars=None,
         return None
 
 
-def rm_sysgoal(spec, aut, delete_index, base_filename="rm_sysgoal", toollog=1):
+def rm_sysgoal(spec, aut, delete_index, base_filename="rm_sysgoal", toollog=0):
     if toollog < 0:
         raise ValueError("Argument toollog must be nonnegative")
     if toollog == 0:
